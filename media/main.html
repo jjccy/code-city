@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
+  <title>Code City</title>
+  <style>
+    :root {
+      --bg:       var(--vscode-editor-background, #1e1e2e);
+      --surface:  var(--vscode-editorWidget-background, #2a2a3e);
+      --border:   var(--vscode-widget-border, #3a3a5a);
+      --text:     var(--vscode-editor-foreground, #cdd6f4);
+      --muted:    var(--vscode-descriptionForeground, #6c7086);
+      --accent:   var(--vscode-focusBorder, #89b4fa);
+      --green:    var(--vscode-terminal-ansiGreen, #a6e3a1);
+      --yellow:   var(--vscode-terminal-ansiYellow, #f9e2af);
+      --red:      var(--vscode-terminal-ansiRed, #f38ba8);
+      --mauve:    #cba6f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--vscode-font-family, 'Segoe UI', sans-serif);
+      font-size: 12px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Resource Bar ── */
+    #resources {
+      display: flex;
+      gap: 6px;
+      padding: 8px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .res-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+    .res-chip .val { font-weight: bold; color: var(--accent); }
+
+    /* ── Tabs ── */
+    #tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 4px;
+      cursor: pointer;
+      font-size: 11px;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .tab:hover  { color: var(--text); }
+
+    /* ── Panels ── */
+    .panel { display: none; flex-direction: column; overflow-y: auto; flex: 1; padding: 8px; gap: 8px; }
+    .panel.active { display: flex; }
+
+    /* ── Pet Cards ── */
+    .pet-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .pet-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .pet-emoji { font-size: 24px; line-height: 1; }
+    .pet-info  { flex: 1; }
+    .pet-name  { font-weight: bold; font-size: 13px; }
+    .pet-stage { font-size: 10px; color: var(--muted); }
+    .pet-path-manual { color: var(--mauve); font-size: 10px; }
+    .pet-path-llm    { color: var(--green); font-size: 10px; }
+
+    .feed-bar { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+    .progress-wrap { flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+    .fill-normal  { background: var(--green); }
+    .fill-premium { background: var(--mauve); }
+
+    .pet-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+
+    /* ── Building Cards ── */
+    .building-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .building-header { display: flex; align-items: center; gap: 8px; }
+    .building-emoji  { font-size: 20px; }
+    .building-name   { font-weight: bold; }
+    .building-level  { font-size: 10px; color: var(--muted); }
+    .worker-slot     { font-size: 10px; color: var(--yellow); margin-top: 4px; }
+
+    .build-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .buildable-card {
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.15s;
+    }
+    .buildable-card:hover { border-color: var(--accent); }
+    .buildable-cost { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Stats ── */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .stat-val { color: var(--accent); font-weight: bold; }
+
+    /* ── Buttons ── */
+    button {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    button:hover  { border-color: var(--accent); }
+    button.primary {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+      font-weight: bold;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 0;
+    }
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 20px 8px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="resources">
+    <div class="res-chip">🌱 <span id="r-normal" class="val">0</span></div>
+    <div class="res-chip">⭐ <span id="r-premium" class="val">0</span></div>
+    <div class="res-chip">🏙️ <span id="r-xp" class="val">0</span> XP</div>
+    <div class="res-chip">💎 <span id="r-rare" class="val">0</span></div>
+  </div>
+
+  <div id="tabs">
+    <div class="tab active" data-tab="pets">🐾 Pets</div>
+    <div class="tab"        data-tab="city">🏙️ City</div>
+    <div class="tab"        data-tab="stats">📊 Stats</div>
+  </div>
+
+  <!-- PETS PANEL -->
+  <div id="panel-pets" class="panel active">
+    <button class="primary" id="btn-add-pet">+ Hatch New Pet</button>
+    <div id="pet-list"></div>
+  </div>
+
+  <!-- CITY PANEL -->
+  <div id="panel-city" class="panel">
+    <div class="section-title">🏗️ Your Buildings</div>
+    <div id="building-list"></div>
+    <div class="section-title" style="margin-top:8px">🔨 Build</div>
+    <div id="build-options" class="build-grid"></div>
+  </div>
+
+  <!-- STATS PANEL -->
+  <div id="panel-stats" class="panel">
+    <div id="stats-list"></div>
+  </div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+    let state = null;
+
+    // ── Tabs ────────────────────────────────────────────────────────────────
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ── Add Pet ─────────────────────────────────────────────────────────────
+    document.getElementById('btn-add-pet').addEventListener('click', () => {
+      vscode.postMessage({ type: 'addPet' });
+    });
+
+    // ── State Updates ────────────────────────────────────────────────────────
+    window.addEventListener('message', e => {
+      if (e.data.type === 'state') {
+        state = e.data.data;
+        render();
+      }
+    });
+
+    function render() {
+      if (!state) { return; }
+      renderResources();
+      renderPets();
+      renderCity();
+      renderStats();
+    }
+
+    function renderResources() {
+      document.getElementById('r-normal').textContent  = state.resources.normalFeed;
+      document.getElementById('r-premium').textContent = state.resources.premiumFeed;
+      document.getElementById('r-xp').textContent      = state.resources.cityXP;
+      document.getElementById('r-rare').textContent    = state.resources.rareMaterials.toFixed(1);
+    }
+
+    function renderPets() {
+      const list = document.getElementById('pet-list');
+      if (!state.pets.length) {
+        list.innerHTML = '<div class="empty-state">No pets yet.<br>Hatch one to get started!</div>';
+        return;
+      }
+
+      list.innerHTML = state.pets.map(pet => {
+        const species = state.speciesList.find(s => s.id === pet.speciesId);
+        const stageLabel = ['Baby', 'Evolved', 'Final'][pet.stage];
+        const pathLabel  = pet.path === 'undecided' ? '' :
+          pet.path === 'manual'
+            ? '<span class="pet-path-manual">⭐ Manual path</span>'
+            : '<span class="pet-path-llm">🌱 LLM path</span>';
+
+        const normalMax   = species.normalFeedCost * (pet.stage + 1);
+        const premiumMax  = species.premiumFeedCost * (pet.stage + 1);
+        const normalPct   = Math.min(100, Math.round(pet.normalFedTotal / normalMax * 100));
+        const premiumPct  = Math.min(100, Math.round(pet.premiumFedTotal / premiumMax * 100));
+
+        const assigned = state.city.buildings.find(b => pet.assignedTo === b.id);
+        const assignedLabel = assigned
+          ? `🔨 Working at ${state.buildingTypes.find(t=>t.id===assigned.typeId)?.name}`
+          : '';
+
+        return `
+          <div class="pet-card">
+            <div class="pet-header">
+              <div class="pet-emoji">${pet.form.emoji}</div>
+              <div class="pet-info">
+                <div class="pet-name">${pet.name}</div>
+                <div class="pet-stage">${pet.form.name} · ${stageLabel} ${pathLabel}</div>
+                ${assignedLabel ? `<div style="font-size:10px;color:var(--yellow)">${assignedLabel}</div>` : ''}
+              </div>
+            </div>
+            <div class="feed-bar">
+              <span style="font-size:10px;width:40px">🌱 ${normalPct}%</span>
+              <div class="progress-wrap"><div class="progress-fill fill-normal" style="width:${normalPct}%"></div></div>
+            </div>
+            <div class="feed-bar">
+              <span style="font-size:10px;width:40px">⭐ ${premiumPct}%</span>
+              <div class="progress-wrap"><div class="progress-fill fill-premium" style="width:${premiumPct}%"></div></div>
+            </div>
+            <div class="pet-actions">
+              <button onclick="feed('${pet.id}','normal')"
+                      ${state.resources.normalFeed < 1 ? 'disabled' : ''}>
+                🌱 Feed (${state.resources.normalFeed})
+              </button>
+              <button onclick="feed('${pet.id}','premium')"
+                      ${state.resources.premiumFeed < 1 ? 'disabled' : ''}>
+                ⭐ Premium (${state.resources.premiumFeed})
+              </button>
+              <button onclick="showAssign('${pet.id}')">🏗️ Assign</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderCity() {
+      const buildingList = document.getElementById('building-list');
+      const buildOptions = document.getElementById('build-options');
+
+      buildingList.innerHTML = state.city.buildings.map(b => {
+        const type   = state.buildingTypes.find(t => t.id === b.typeId);
+        const worker = state.pets.find(p => p.assignedTo === b.id);
+        return `
+          <div class="building-card">
+            <div class="building-header">
+              <div class="building-emoji">${type.emoji}</div>
+              <div>
+                <div class="building-name">${type.name} <span class="building-level">Lv ${b.level}</span></div>
+                <div style="font-size:10px;color:var(--muted)">${type.description}</div>
+              </div>
+            </div>
+            ${worker ? `<div class="worker-slot">${worker.form?.emoji} ${worker.name} working here</div>` : ''}
+            <div style="margin-top:6px">
+              <button onclick="upgradeBuilding('${b.id}')">⬆️ Upgrade</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      const existing = new Set(state.city.buildings.map(b => b.typeId));
+      const buildable = state.unlockedBuildings.filter(t => t.cost > 0);
+      buildOptions.innerHTML = buildable.map(t => `
+        <div class="buildable-card" onclick="buildBuilding('${t.id}')">
+          <div>${t.emoji}</div>
+          <div style="font-weight:bold;font-size:11px">${t.name}</div>
+          <div class="buildable-cost">🌱 ${t.cost} feed · ${t.unlockXP} XP needed</div>
+        </div>`).join('') || '<div class="empty-state" style="grid-column:1/-1">Earn more City XP to unlock buildings.</div>';
+    }
+
+    function renderStats() {
+      const s = state.stats;
+      const rows = [
+        ['🔥 Manual chars typed',  s.totalManualChars.toLocaleString()],
+        ['🤖 LLM chars accepted',  s.totalLLMChars.toLocaleString()],
+        ['🏅 Commits',             s.totalCommits],
+        ['📅 Login streak',        `${s.streakDays} days`],
+        ['⚡ Longest typing streak', `${s.longestTypingStreak}s`],
+        ['🏙️ City level',          state.city.level],
+        ['🐾 Pets hatched',        state.pets.length],
+      ];
+      document.getElementById('stats-list').innerHTML =
+        rows.map(([l, v]) => `<div class="stat-row"><span>${l}</span><span class="stat-val">${v}</span></div>`).join('');
+    }
+
+    // ── Actions ──────────────────────────────────────────────────────────────
+    function feed(petId, feedType) {
+      vscode.postMessage({ type: 'feedPet', petId, feedType });
+    }
+
+    function showAssign(petId) {
+      // Show building list for assignment
+      const options = state.city.buildings.map(b => {
+        const type = state.buildingTypes.find(t => t.id === b.typeId);
+        return `${type.emoji} ${type.name} (Lv ${b.level})`;
+      });
+      // Simple prompt via extension host
+      vscode.postMessage({ type: 'showAssign', petId, buildings: state.city.buildings.map(b => b.id) });
+    }
+
+    function buildBuilding(typeId) {
+      vscode.postMessage({ type: 'buildBuilding', typeId });
+    }
+
+    function upgradeBuilding(buildingId) {
+      vscode.postMessage({ type: 'upgradeBuilding', buildingId });
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    vscode.postMessage({ type: 'ready' });
+  </script>
+</body>
+</html>
