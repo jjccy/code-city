@@ -3,7 +3,7 @@
 > An idle dev civilization that lives in your VS Code sidebar —
 > feed pets with your typing, build a city as you code.
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.1.8-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -25,6 +25,10 @@ makes your pets *special*.
 ---
 
 ## Features
+
+**Live pasture canvas** — your pets roam freely in an animated canvas that
+fills the sidebar. Sprites are pixel-art PNGs (CC0) with walk, idle, and
+action animations. Size scales with evolution stage.
 
 **Four pet species, each with two evolution paths:**
 
@@ -92,7 +96,7 @@ Code City is designed to be lightweight and won't slow down your editor.
 
 | Resource | Details |
 |---|---|
-| CPU | Passive production runs on a single 60-second interval, only when the panel has been opened |
+| CPU | Pasture canvas runs at 20 FPS via rAF; production ticks on a 10s interval |
 | Memory | Minimal — no persistent connections, no file watchers beyond the active session |
 | Disk I/O | Saves are debounced — only written when data changes, not on every tick |
 | Network | None — fully offline, no telemetry |
@@ -117,11 +121,11 @@ npm run watch   # recompiles on save
 ```
 
 Press **F5** in VS Code to launch the Extension Development Host.
-Hot reload is active in dev mode — saving `main.html` refreshes the
-webview instantly without reloading the window.
+Hot reload is active in dev mode — saving any file in `media/` refreshes
+the webview instantly without reloading the window.
 
 ```bash
-npm test   # 41 unit tests via Mocha
+npm test   # 43 unit tests via Mocha
 ```
 
 ---

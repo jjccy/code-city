@@ -38,13 +38,13 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── Git commit tracking ────────────────────────────────────────────────────
   setupGitTracking(context, saveManager, provider);
 
-  // ── City tick (every 60 s) ─────────────────────────────────────────────────
+  // ── City tick (every 10 s) ─────────────────────────────────────────────────
   const tickInterval = setInterval(() => {
     const result = cityManager.tick();
     if (result.normalFeed > 0 || result.cityXP > 0) {
       provider.pushState();
     }
-  }, 60_000);
+  }, 10_000);
   context.subscriptions.push({ dispose: () => clearInterval(tickInterval) });
 
   // ── Commands ───────────────────────────────────────────────────────────────

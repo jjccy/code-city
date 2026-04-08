@@ -10,7 +10,7 @@ export class CityManager {
 
   get buildings(): BuildingSave[] { return this.saveManager.save.city.buildings; }
 
-  /** Run a production tick. Called on a timer (e.g. every 60s). */
+  /** Run a production tick. Called on a timer (e.g. every 10s). */
   tick(): { normalFeed: number; rareMaterials: number; cityXP: number } {
     const result = { normalFeed: 0, rareMaterials: 0, cityXP: 0 };
     const save   = this.saveManager.save;

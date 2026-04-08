@@ -2,7 +2,7 @@
   "name": "code-city",
   "displayName": "Code City",
   "description": "An idle dev civilization — feed pets with your typing, build a city as you code.",
-  "version": "0.1.5",
+  "version": "0.1.8",
   "publisher": "jjccy",
   "repository": {
     "type": "git",
