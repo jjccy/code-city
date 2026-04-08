@@ -21,28 +21,37 @@ export class CityManager {
     const tickFactor = elapsedSec / 60; // normalised to per-minute
     save.lastTickAt  = now;
 
-    // Active ability multiplier
+    const towerMult  = this.getTowerMultiplier();
     const activeMult = this.getActiveMultiplier('production');
+    const xpMult     = this.getActiveMultiplier('xp');
 
     for (const building of save.city.buildings) {
       const type = BUILDING_TYPES.find(t => t.id === building.typeId);
       if (!type) { continue; }
 
       const workerBonus = this.getWorkerBonus(building.id);
-      const production  = type.baseProduction * building.level * workerBonus * tickFactor * activeMult;
+      const production  = type.baseProduction * building.level * workerBonus * tickFactor;
 
       switch (building.typeId) {
-        case 'farm':      result.normalFeed    += production; break;
-        case 'workshop':  result.cityXP         += production; break;
-        case 'library':   result.cityXP         += production * 0.5; break;
-        case 'mine':      result.rareMaterials  += production * 0.5; break;
+        case 'farm':
+          result.normalFeed   += production * towerMult * activeMult;
+          break;
+        case 'workshop':
+          result.cityXP        += production * towerMult * activeMult * xpMult;
+          break;
+        case 'library':
+          result.cityXP        += production * 0.5 * towerMult * activeMult * xpMult;
+          break;
+        case 'mine':
+          result.rareMaterials += production * towerMult * activeMult;
+          break;
         case 'tower':
-          // Tower boosts everything else — handled via multiplier
+          // Tower boosts all other buildings via getTowerMultiplier() — no direct output
           break;
       }
     }
 
-    result.normalFeed   = Math.floor(result.normalFeed);
+    result.normalFeed    = Math.floor(result.normalFeed);
     result.rareMaterials = Math.floor(result.rareMaterials * 10) / 10;
     result.cityXP        = Math.floor(result.cityXP);
 
@@ -101,13 +110,30 @@ export class CityManager {
     this.saveManager.scheduleSave();
   }
 
+  /** Total production multiplier from all Tower buildings (10% per level). */
+  getTowerMultiplier(): number {
+    const totalLevel = this.saveManager.save.city.buildings
+      .filter(b => b.typeId === 'tower')
+      .reduce((sum, b) => sum + b.level, 0);
+    return 1 + totalLevel * 0.1;
+  }
+
+  /** Evolution feed discount from all Library buildings (2% per level, cap 50%). */
+  getTotalLibraryDiscount(): number {
+    const totalLevel = this.saveManager.save.city.buildings
+      .filter(b => b.typeId === 'library')
+      .reduce((sum, b) => sum + b.level, 0);
+    return Math.min(0.5, totalLevel * 0.02);
+  }
+
   private getWorkerBonus(buildingId: string): number {
     const worker = this.saveManager.save.pets.find(p => p.assignedTo === buildingId);
     if (!worker) { return 1; }
     return 1 + worker.stage * 0.5; // stage 1 = 1.5×, stage 2 = 2×
   }
 
-  private getActiveMultiplier(target: 'production' | 'xp' | 'streak' | 'all'): number {
+  /** Returns the combined multiplier for all active abilities targeting the given metric. */
+  getActiveMultiplier(target: 'production' | 'xp' | 'streak' | 'evolution'): number {
     const now = Date.now();
     const abilities = this.saveManager.save.activeAbilities.filter(
       a => a.expiresAt > now && (a.target === target || a.target === 'all')

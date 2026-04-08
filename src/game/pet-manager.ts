@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SaveManager, PetSave } from './save-manager';
+import { CityManager } from './city-manager';
 import { PET_SPECIES, SPECIAL_ABILITIES, PetStage } from './game-data';
 
 function randomId(): string {
@@ -7,7 +8,10 @@ function randomId(): string {
 }
 
 export class PetManager {
-  constructor(private readonly saveManager: SaveManager) {}
+  constructor(
+    private readonly saveManager: SaveManager,
+    private readonly cityManager: CityManager,
+  ) {}
 
   get pets(): PetSave[] { return this.saveManager.save.pets; }
 
@@ -82,11 +86,18 @@ export class PetManager {
 
     const species = PET_SPECIES.find(s => s.id === pet.speciesId)!;
 
-    // Determine evolution path on first threshold hit
+    // Apply Library discount + Oracle ability to evolution feed thresholds
+    const libraryDiscount = this.cityManager.getTotalLibraryDiscount();
+    const oracleMult      = this.cityManager.getActiveMultiplier('evolution');
+    const discountFactor  = (1 - libraryDiscount) * oracleMult;
+
+    // Determine evolution path using discounted stage-1 thresholds
     if (pet.path === 'undecided') {
-      if (pet.premiumFedTotal >= species.premiumFeedCost) {
+      const discountedNormal  = Math.ceil(species.normalFeedCost  * discountFactor);
+      const discountedPremium = Math.ceil(species.premiumFeedCost * discountFactor);
+      if (pet.premiumFedTotal >= discountedPremium) {
         pet.path = 'manual';
-      } else if (pet.normalFedTotal >= species.normalFeedCost) {
+      } else if (pet.normalFedTotal >= discountedNormal) {
         pet.path = 'llm';
       } else {
         return; // neither threshold reached yet
@@ -94,8 +105,8 @@ export class PetManager {
     }
 
     const nextStage = (pet.stage + 1) as PetStage;
-    const normalNeeded  = species.normalFeedCost  * nextStage;
-    const premiumNeeded = species.premiumFeedCost * nextStage;
+    const normalNeeded  = Math.ceil(species.normalFeedCost  * nextStage * discountFactor);
+    const premiumNeeded = Math.ceil(species.premiumFeedCost * nextStage * discountFactor);
 
     // Only the path's dominant feed type drives evolution
     const canEvolve = pet.path === 'manual'
@@ -104,7 +115,19 @@ export class PetManager {
 
     if (!canEvolve) { return; }
 
+    // rareMaterials gate: final stage requires 5 rare materials
+    if (nextStage === 2) {
+      if (this.saveManager.save.resources.rareMaterials < 5) { return; }
+      this.saveManager.save.resources.rareMaterials -= 5;
+    }
+
     pet.stage = nextStage;
+
+    // Consume any active Oracle ability after successful evolution
+    const now = Date.now();
+    this.saveManager.save.activeAbilities = this.saveManager.save.activeAbilities.filter(
+      a => !(a.target === 'evolution' && a.expiresAt > now)
+    );
 
     const path   = pet.path === 'manual' ? species.manualPath : species.llmPath;
     const form   = path[pet.stage];
@@ -113,12 +136,47 @@ export class PetManager {
     vscode.window.showInformationMessage(
       `🎉 ${pet.name} evolved into ${form.emoji} ${form.name}!` +
       (isMax && pet.path === 'manual'
-        ? ` Unlocked special ability: ${SPECIAL_ABILITIES[form.name.toLowerCase()] ?? '?'}`
+        ? ` Unlocked special ability: ${SPECIAL_ABILITIES[form.name.toLowerCase()]?.description ?? '?'}`
         : '')
     );
 
     if (isMax && pet.path === 'manual') {
       pet.specialAbilityUnlocked = true;
+    }
+  }
+
+  /**
+   * Activate the pet's special ability. Returns false if the pet doesn't have
+   * an unlocked ability (wrong stage, wrong path, or already used).
+   */
+  useAbility(petId: string): boolean {
+    const pet = this.saveManager.save.pets.find(p => p.id === petId);
+    if (!pet || pet.stage < 2 || pet.path !== 'manual') { return false; }
+    if (!pet.specialAbilityUnlocked) { return false; }
+
+    const form    = this.getForm(pet);
+    const ability = SPECIAL_ABILITIES[form.name.toLowerCase()];
+    if (!ability) { return false; }
+
+    const expiresAt = Date.now() + ability.durationMs;
+    this.saveManager.save.activeAbilities.push({
+      petId,
+      target: ability.target,
+      multiplier: ability.multiplier,
+      expiresAt,
+    });
+
+    pet.specialAbilityUnlocked = false; // consumed
+    this.saveManager.scheduleSave();
+    return true;
+  }
+
+  /** Dev-only: re-unlock the ability for a stage-2 manual pet so it can be tested again. */
+  forceResetAbility(petId: string): void {
+    const pet = this.saveManager.save.pets.find(p => p.id === petId);
+    if (pet && pet.stage === 2 && pet.path === 'manual') {
+      pet.specialAbilityUnlocked = true;
+      this.saveManager.scheduleSave();
     }
   }
 

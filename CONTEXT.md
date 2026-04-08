@@ -62,14 +62,22 @@ premium (manual) or normal (LLM) feed dominates:
 
 ### Special Abilities (Manual Path Final Stage only)
 
-Reaching the final stage via the manual path unlocks a one-time special ability:
+Reaching the final stage via the manual path unlocks a one-time special ability. The player clicks **⚡ Use Ability** in the pet card to activate it.
 
-| Pet | Ability |
-|---|---|
-| ✨ Seraph | Divine Craft — Premium feed gives 2× XP for 10 min |
-| 🍀 Oracle | Foresight — Next evolution costs 50% less feed |
-| 🐋 Leviathan | Deep Work — Typing streak timer doubled |
-| 🌪️ Storm | Surge — All buildings produce 3× for 5 min |
+| Pet | Ability | Target | Mult | Duration |
+|---|---|---|---|---|
+| ✨ Seraph | Divine Craft — Premium feed gives 2× XP | `xp` | ×2 | 10 min |
+| 🍀 Oracle | Foresight — Next evolution costs 50% less feed | `evolution` | ×0.5 | 5 min |
+| 🐋 Leviathan | Deep Work — Typing streak timer doubled | `streak` | ×2 | 10 min |
+| 🌪️ Storm | Surge — All buildings produce 3× | `production` | ×3 | 5 min |
+
+Ability flow:
+1. Pet evolves to stage 2 via manual path → `specialAbilityUnlocked = true`
+2. User clicks "⚡ Use Ability" → `useAbility(petId)` in `PetManager`
+3. An `ActiveAbility` entry is pushed to `save.activeAbilities` with `petId`, `target`, `multiplier`, `expiresAt`
+4. `specialAbilityUnlocked` is set to `false` (consumed — one-time use)
+5. Oracle ability is also consumed (removed from `activeAbilities`) after the first evolution it enables
+6. **Dev panel**: "↺ Ability" button calls `forceResetAbility(petId)` to re-enable for testing
 
 ---
 
@@ -90,13 +98,18 @@ everyone has tests set up. Replaced with universally achievable triggers:
 
 ### Buildings
 
-| Building | Emoji | Unlock (City XP) | Cost | Produces |
+| Building | Emoji | Unlock (City XP) | Cost | Produces / Effect |
 |---|---|---|---|---|
-| Farm | 🌾 | 0 (free, starts with one) | 0 | Normal feed / min |
-| Workshop | 🔨 | 50 XP | 100 feed | City XP / min |
-| Library | 📚 | 150 XP | 300 feed | City XP (slower) |
-| Mine | ⛏️ | 400 XP | 600 feed | Rare materials |
-| Tower | 🗼 | 1000 XP | 2000 feed | Boosts all workers |
+| Farm | 🌾 | 0 (free, starts with one) | 0 | 2 normal feed / min |
+| Workshop | 🔨 | 50 XP | 100 feed | 1 City XP / min |
+| Library | 📚 | 150 XP | 300 feed | 0.5 City XP / min + −2% evolution cost per level (max −50%) |
+| Mine | ⛏️ | 400 XP | 600 feed | Rare materials / min (5 needed to reach final evolution stage) |
+| Tower | 🗼 | 1000 XP | 2000 feed | +10% multiplier on ALL building output per level |
+
+All buildings are multiplicatively boosted by:
+- Tower total-level bonus (`getTowerMultiplier = 1 + totalTowerLevel × 0.1`)
+- Active Storm ability (+3× production)
+- Active Seraph ability (+2× XP output for workshop/library)
 
 ### Worker Assignment
 
@@ -117,17 +130,25 @@ Level gates at City XP: 0, 50, 200, 500, 1200, 3000
 D:\oo\code-city\
 ├── src/
 │   ├── extension.ts              # Entry point, wires everything, git tracking
+│   │                             # Construction order: saveManager → cityManager
+│   │                             #   → petManager(save, city) → feedTracker(save, city, cb)
 │   ├── game/
-│   │   ├── game-data.ts          # All static data (species, buildings, abilities)
+│   │   ├── game-data.ts          # Static data: species, buildings, SpecialAbility records
 │   │   ├── save-manager.ts       # JSON save/load with 500ms debounced writes
 │   │   ├── feed-tracker.ts       # Text change listener, streak timer, daily bonus
-│   │   ├── pet-manager.ts        # Hatch, feed, evolve pets
-│   │   └── city-manager.ts       # Build, upgrade, tick (passive production)
+│   │   │                         # Leviathan ability doubles getStreakIdleMs()
+│   │   ├── pet-manager.ts        # Hatch, feed, evolve, useAbility, forceResetAbility
+│   │   └── city-manager.ts       # Build, upgrade, tick; getTowerMultiplier,
+│   │                             #   getTotalLibraryDiscount, getActiveMultiplier
 │   └── webview/
 │       └── webview-provider.ts   # Sidebar webview, message routing
 ├── media/
-│   ├── main.html                 # Sidebar UI: Pets | City | Stats tabs
+│   ├── main.html                 # Sidebar UI: Pets | City | Stats | Dev tabs
 │   └── icon.svg                  # Extension icon
+├── test/
+│   ├── setup.js                  # ts-node + vscode mock
+│   ├── vscode.mock.ts            # Minimal vscode stub
+│   └── game.test.ts              # 41 unit tests
 ├── package.json                  # VS Code extension manifest
 └── tsconfig.json
 ```
@@ -240,6 +261,37 @@ Now: once a path is locked in (LLM or manual), only that path's feed drives evol
 
 ---
 
+## Building Effects (implemented)
+
+### Tower — `getTowerMultiplier()`
+All non-tower buildings are multiplied by `1 + totalTowerLevel × 0.1`.
+A level-3 Tower gives +30% to Farm, Workshop, Library, and Mine output.
+
+### Library — `getTotalLibraryDiscount()`
+Returns `min(0.5, totalLibraryLevel × 0.02)`. Applied as a discount factor to
+evolution feed thresholds in `PetManager.tryEvolve()` — including path
+determination for undecided pets.
+
+### Mine — rareMaterials gate
+Produces rareMaterials per tick. **5 rareMaterials are required** (and consumed)
+for any pet to evolve from stage 1 to stage 2. If the player has < 5, the
+evolution is blocked even if the feed threshold is met.
+
+**UI hint:** Stage-1 pet cards show "💎 Final evolution needs 5 rare mats (have X.X)"
+in red when the player can't afford it, green when they can. This makes the gate
+visible so players aren't confused when feeding does nothing.
+
+### Special Abilities — `useAbility(petId)`
+`PetManager.useAbility(petId)` pushes an `ActiveAbility` entry to `save.activeAbilities`
+with `petId`, `target`, `multiplier`, and `expiresAt`. It clears
+`specialAbilityUnlocked` (one-time use). `CityManager.getActiveMultiplier(target)`
+reads these entries (filtered by expiry) to compute combined multipliers.
+
+Oracle's `'evolution'` target ability is consumed (removed from `activeAbilities`)
+immediately after the next successful evolution — not just at expiry.
+
+---
+
 ## Dev Mode Features (added)
 
 When the extension runs in `ExtensionMode.Development` (F5 launch):
@@ -291,29 +343,12 @@ Coverage areas:
 
 - [ ] **Pet sprites** — currently emoji. Add pixel art PNG sprite sheets (32×32 / 48×48,
       4 cols × 12 rows format — same as pokemon-pets uses)
-- [ ] **Special abilities** — `activeAbilities` array is tracked in save but the
-      effect application is only partially wired in `city-manager.ts` (multiplier
-      is read but abilities are never added). Need a `useAbility(petId)` command.
-- [ ] **Rare materials** — produced by Mine but not consumed anywhere yet. Design
-      a use case (e.g. unlock premium buildings or cosmetics)
 - [ ] **Worker assign UI** — currently routes through VS Code QuickPick. Could be
       drag-and-drop in the webview
 - [ ] **Sound effects** — vscode webview can play Audio
 - [ ] **More species** — only 4 pets right now. Easy to add more in `game-data.ts`
+- [ ] **Rare materials cosmetics/unlocks** — currently only gating final evolution. Could
+      also unlock premium building skins or special workers.
+- [ ] **Ability recharge** — abilities are one-time per evolution. Could add a recharge
+      mechanic (e.g., reaching a new commit milestone re-unlocks it)
 - [ ] **Publish to Marketplace** — need to run `vsce package` then `vsce publish`
-
----
-
-## Session Notes
-
-- The pokemon-pets extension (`anasfiguigui.pokemon-pets-1.0.0`) is fully obfuscated
-  (`_0x...` variable names). Game data is embedded inline in `extension.js`, NOT in
-  the separate `game-data.js` file (which is dead code). Any mods need to go directly
-  into `extension.js`.
-- Max pet limit was changed from 6 → 24 by modifying `k=0x6` → `k=0x18` in
-  `extension.js` (there are two copies: one in `save-manager.js` which was easy,
-  one in the obfuscated `extension.js` which required finding the variable).
-- Gen 2 sprites were downloaded from PokeAPI
-  (`raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{id}.png`)
-  and tiled into 4×12 sprite sheets using jimp.
-  Script saved at `D:\tmp\pokemon-sprite-gen\gen2.js`.

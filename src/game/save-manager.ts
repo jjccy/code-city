@@ -24,10 +24,11 @@ export interface BuildingSave {
 }
 
 export interface ActiveAbility {
-  name: string;
+  /** Pet whose ability triggered this effect */
+  petId: string;
   expiresAt: number; // Date.now() ms
   multiplier: number;
-  target: 'xp' | 'production' | 'streak' | 'all';
+  target: 'xp' | 'production' | 'streak' | 'evolution' | 'all';
 }
 
 export interface GameSave {

@@ -10,8 +10,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const saveManager  = new SaveManager(context.globalStorageUri.fsPath);
   saveManager.load();
 
-  const petManager  = new PetManager(saveManager);
   const cityManager = new CityManager(saveManager);
+  const petManager  = new PetManager(saveManager, cityManager);
   const provider    = new WebviewProvider(context, saveManager, petManager, cityManager);
 
   // ── Webview sidebar ────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // ── Feed tracker ───────────────────────────────────────────────────────────
-  const feedTracker = new FeedTracker(saveManager, () => provider.pushState());
+  const feedTracker = new FeedTracker(saveManager, cityManager, () => provider.pushState());
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(e => feedTracker.onTextChange(e))
   );

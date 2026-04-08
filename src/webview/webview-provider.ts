@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { SaveManager } from '../game/save-manager';
 import { PetManager } from '../game/pet-manager';
 import { CityManager } from '../game/city-manager';
-import { PET_SPECIES, BUILDING_TYPES } from '../game/game-data';
+import { PET_SPECIES, BUILDING_TYPES, SPECIAL_ABILITIES } from '../game/game-data';
 
 export class WebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'code-city.gameView';
@@ -19,6 +19,8 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   ) {
     this.devMode = context.extensionMode === vscode.ExtensionMode.Development
       || vscode.workspace.getConfiguration('code-city').get<boolean>('devMode', false);
+    // Temporary diagnostic — remove before publish
+    console.log(`[Code City] extensionMode=${context.extensionMode} devMode=${this.devMode}`);
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -86,6 +88,12 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
+        case 'useAbility':
+          if (!this.petManager.useAbility(msg.petId)) {
+            vscode.window.showWarningMessage('Ability not available.');
+          }
+          this.pushState();
+          break;
 
         // ── Dev messages (ignored in production) ──────────────────────────
         case 'dev:set':
@@ -110,11 +118,19 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           {
             const pet = save.pets.find(p => p.id === msg.petId);
             if (pet && pet.stage < 2) {
-              if (pet.path === 'undecided') { pet.path = 'llm'; }
+              if (pet.path === 'undecided') { pet.path = 'manual'; } // manual to expose abilities
               pet.stage = (pet.stage + 1) as 0 | 1 | 2;
+              if (pet.stage === 2 && pet.path === 'manual') {
+                pet.specialAbilityUnlocked = true;
+              }
               this.saveManager.scheduleSave();
             }
           }
+          this.pushState();
+          break;
+        case 'dev:resetAbility':
+          if (!this.devMode) { break; }
+          this.petManager.forceResetAbility(msg.petId);
           this.pushState();
           break;
         case 'dev:reset':
@@ -150,9 +166,13 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         pets,
         city: save.city,
         stats: save.stats,
+        activeAbilities: save.activeAbilities,
+        towerMultiplier: this.cityManager.getTowerMultiplier(),
+        libraryDiscount: this.cityManager.getTotalLibraryDiscount(),
         unlockedBuildings: this.cityManager.getUnlockedBuildings(),
         buildingTypes: BUILDING_TYPES,
         speciesList: PET_SPECIES,
+        specialAbilities: SPECIAL_ABILITIES,
         devMode: this.devMode,
       },
     });

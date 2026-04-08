@@ -48,7 +48,7 @@
         },
         "code-city.devMode": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "markdownDescription": "Show the **🔧 Dev** tools tab in the Code City sidebar. Automatically active when running via F5 (Extension Development Host)."
         }
       }

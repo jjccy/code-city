@@ -162,9 +162,19 @@ export const BUILDING_TYPES: BuildingType[] = [
 // ─── Special Abilities ────────────────────────────────────────────────────────
 // Unlocked when a pet reaches final stage via the manual path
 
-export const SPECIAL_ABILITIES: Record<string, string> = {
-  seraph:    '✨ Divine Craft — Premium feed gives 2× XP for 10 minutes',
-  oracle:    '🍀 Foresight — Next evolution costs 50% less feed',
-  leviathan: '🐋 Deep Work — Typing streak timer doubled',
-  storm:     '🌪️ Surge — All buildings produce 3× for 5 minutes',
+export interface SpecialAbility {
+  description: string;
+  /** Which game metric this ability multiplies */
+  target: 'xp' | 'production' | 'streak' | 'evolution';
+  /** The multiplier applied (sub-1 means cheaper/shorter) */
+  multiplier: number;
+  /** How long the effect lasts in milliseconds */
+  durationMs: number;
+}
+
+export const SPECIAL_ABILITIES: Record<string, SpecialAbility> = {
+  seraph:    { description: '✨ Divine Craft — Premium feed gives 2× XP for 10 min',    target: 'xp',        multiplier: 2,   durationMs: 10 * 60_000 },
+  oracle:    { description: '🍀 Foresight — Next evolution costs 50% less feed',         target: 'evolution', multiplier: 0.5, durationMs:  5 * 60_000 },
+  leviathan: { description: '🐋 Deep Work — Typing streak timer doubled for 10 min',     target: 'streak',    multiplier: 2,   durationMs: 10 * 60_000 },
+  storm:     { description: '🌪️ Surge — All buildings produce 3× for 5 min',             target: 'production',multiplier: 3,   durationMs:  5 * 60_000 },
 };

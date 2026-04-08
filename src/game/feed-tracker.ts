@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SaveManager } from './save-manager';
+import { CityManager } from './city-manager';
 
 /**
  * Watches text document changes and classifies them as manual typing
@@ -17,11 +18,12 @@ export class FeedTracker {
 
   /** Typing streak tracking */
   private streakStart: number | null = null;
-  private streakTimer: NodeJS.Timeout | undefined;
+  private streakTimer: ReturnType<typeof setTimeout> | undefined;
   private static STREAK_IDLE_MS = 10_000; // 10 s of no typing ends streak
 
   constructor(
     private readonly saveManager: SaveManager,
+    private readonly cityManager: CityManager,
     private readonly onFeedReady: () => void,
   ) {}
 
@@ -75,6 +77,11 @@ export class FeedTracker {
 
   // ─── Typing Streak ─────────────────────────────────────────────────────────
 
+  /** Returns the idle timeout in ms, doubled when Leviathan ability is active. */
+  getStreakIdleMs(): number {
+    return FeedTracker.STREAK_IDLE_MS * this.cityManager.getActiveMultiplier('streak');
+  }
+
   private touchStreak(): void {
     if (!this.streakStart) {
       this.streakStart = Date.now();
@@ -86,7 +93,7 @@ export class FeedTracker {
 
     this.streakTimer = setTimeout(() => {
       this.endStreak();
-    }, FeedTracker.STREAK_IDLE_MS);
+    }, this.getStreakIdleMs());
   }
 
   private endStreak(): void {

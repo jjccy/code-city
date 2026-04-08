@@ -83,7 +83,7 @@
     }
     .tab.active { color: var(--text); border-bottom-color: var(--accent); }
     .tab:hover  { color: var(--text); }
-    #tab-dev { display: none; color: var(--red); }
+    #tab-dev { color: var(--red); }
 
     /* ── Panels ── */
     .panel { display: none; flex-direction: column; flex: 1; min-height: 0; }
@@ -288,6 +288,7 @@
 
   <!-- CITY PANEL -->
   <div id="panel-city" class="panel">
+    <div id="city-bonuses" style="font-size:10px;color:var(--yellow);padding:2px 0"></div>
     <div class="section-title">🏗️ Your Buildings</div>
     <div id="building-list"></div>
     <div class="section-title" style="margin-top:8px">🔨 Build</div>
@@ -359,6 +360,7 @@
 
     // ── State Updates ────────────────────────────────────────────────────────
     window.addEventListener('message', e => {
+      console.log('[Code City webview] message:', e.data.type, e.data.data?.devMode);
       if (e.data.type === 'state') {
         state = e.data.data;
         render();
@@ -372,7 +374,7 @@
       renderCity();
       renderStats();
       const devTab = document.getElementById('tab-dev');
-      devTab.style.display = state.devMode ? '' : 'none';
+      devTab.style.display = state.devMode === false ? 'none' : '';
       if (state.devMode) { renderDev(); }
     }
 
@@ -398,15 +400,45 @@
             ? '<span class="pet-path-manual">⭐ Manual path</span>'
             : '<span class="pet-path-llm">🤖 LLM path</span>';
 
-        const normalMax   = species.normalFeedCost * (pet.stage + 1);
-        const premiumMax  = species.premiumFeedCost * (pet.stage + 1);
-        const normalPct   = Math.min(100, Math.round(pet.normalFedTotal / normalMax * 100));
-        const premiumPct  = Math.min(100, Math.round(pet.premiumFedTotal / premiumMax * 100));
+        const normalMax  = species.normalFeedCost  * (pet.stage + 1);
+        const premiumMax = species.premiumFeedCost * (pet.stage + 1);
+        const normalPct  = Math.min(100, Math.round(pet.normalFedTotal  / normalMax  * 100));
+        const premiumPct = Math.min(100, Math.round(pet.premiumFedTotal / premiumMax * 100));
 
         const assigned = state.city.buildings.find(b => pet.assignedTo === b.id);
         const assignedLabel = assigned
           ? `🔨 Working at ${state.buildingTypes.find(t=>t.id===assigned.typeId)?.name}`
           : '';
+
+        // ── Feed button gate logic ────────────────────────────────────────
+        const isMax        = pet.stage >= 2;
+        const normalBlocked  = pet.path === 'manual'; // manual path: normal irrelevant
+        const premiumBlocked = pet.path === 'llm';    // llm path: premium irrelevant
+        const normalDisabled  = isMax || normalBlocked  || normalPct  >= 100 || state.resources.normalFeed  < 1;
+        const premiumDisabled = isMax || premiumBlocked || premiumPct >= 100 || state.resources.premiumFeed < 1;
+
+        // ── Special ability ───────────────────────────────────────────────
+        const isManualFinal = pet.stage >= 2 && pet.path === 'manual';
+        const formName = pet.form.name.toLowerCase();
+        const abilityDef = isManualFinal && state.specialAbilities
+          ? state.specialAbilities[formName]
+          : null;
+
+        let abilityUI = '';
+        if (abilityDef) {
+          const activeAbility = (state.activeAbilities || []).find(
+            a => a.petId === pet.id && a.expiresAt > Date.now()
+          );
+          abilityUI = `<div style="font-size:10px;color:var(--mauve);margin-top:2px">${abilityDef.description}</div>`;
+          if (pet.specialAbilityUnlocked) {
+            abilityUI += `<button onclick="useAbility('${pet.id}')" style="margin-top:4px;border-color:var(--mauve);color:var(--mauve)">⚡ Use Ability</button>`;
+          } else if (activeAbility) {
+            const remSec = Math.ceil((activeAbility.expiresAt - Date.now()) / 1000);
+            abilityUI += `<div style="font-size:10px;color:var(--yellow);margin-top:2px">⏱️ Active: ${formatDuration(remSec)} remaining</div>`;
+          } else {
+            abilityUI += `<div style="font-size:10px;color:var(--muted);margin-top:2px">✓ Ability used</div>`;
+          }
+        }
 
         return `
           <div class="pet-card">
@@ -416,23 +448,24 @@
                 <div class="pet-name">${pet.name}</div>
                 <div class="pet-stage">${pet.form.name} · ${stageLabel} ${pathLabel}</div>
                 ${assignedLabel ? `<div style="font-size:10px;color:var(--yellow)">${assignedLabel}</div>` : ''}
+                ${abilityUI}
               </div>
             </div>
+            ${isMax ? '<div style="font-size:10px;color:var(--yellow);margin-bottom:4px">🏆 Max stage — no further evolution</div>' : ''}
+            ${pet.stage === 1 ? `<div style="font-size:10px;color:${state.resources.rareMaterials >= 5 ? 'var(--green)' : 'var(--red)'};margin-bottom:4px">💎 Final evolution needs 5 rare mats (have ${state.resources.rareMaterials.toFixed(1)})</div>` : ''}
             <div class="feed-bar">
-              <span style="font-size:10px;width:40px">Feed ${normalPct}%</span>
+              <span style="font-size:10px;white-space:nowrap">🌱 ${normalPct}%</span>
               <div class="progress-wrap"><div class="progress-fill fill-normal" style="width:${normalPct}%"></div></div>
             </div>
             <div class="feed-bar">
-              <span style="font-size:10px;width:40px">⭐ ${premiumPct}%</span>
+              <span style="font-size:10px;white-space:nowrap">⭐ ${premiumPct}%</span>
               <div class="progress-wrap"><div class="progress-fill fill-premium" style="width:${premiumPct}%"></div></div>
             </div>
             <div class="pet-actions">
-              <button onclick="feed('${pet.id}','normal')"
-                      ${state.resources.normalFeed < 1 ? 'disabled' : ''}>
+              <button onclick="feed('${pet.id}','normal')" ${normalDisabled ? 'disabled' : ''}>
                 🌱 Feed (${state.resources.normalFeed})
               </button>
-              <button onclick="feed('${pet.id}','premium')"
-                      ${state.resources.premiumFeed < 1 ? 'disabled' : ''}>
+              <button onclick="feed('${pet.id}','premium')" ${premiumDisabled ? 'disabled' : ''}>
                 ⭐ Premium (${state.resources.premiumFeed})
               </button>
               <button onclick="showAssign('${pet.id}')">🏗️ Assign</button>
@@ -445,9 +478,35 @@
       const buildingList = document.getElementById('building-list');
       const buildOptions = document.getElementById('build-options');
 
+      // City-wide bonus hints
+      const towerMult     = state.towerMultiplier ?? 1;
+      const libraryDisc   = state.libraryDiscount ?? 0;
+      const hints = [];
+      if (towerMult > 1)    { hints.push(`🗼 Tower bonus: +${Math.round((towerMult - 1) * 100)}% all output`); }
+      if (libraryDisc > 0)  { hints.push(`📚 Library: −${Math.round(libraryDisc * 100)}% evolution cost`); }
+      document.getElementById('city-bonuses').textContent = hints.join('  ·  ');
+
       buildingList.innerHTML = state.city.buildings.map(b => {
         const type   = state.buildingTypes.find(t => t.id === b.typeId);
         const worker = state.pets.find(p => p.assignedTo === b.id);
+
+        // Mirrors CityManager.upgradeBuilding gate logic
+        const atMax      = b.level >= 50;
+        const baseCost   = Math.max(50, type.cost);
+        const feedCost   = baseCost * b.level * 2;
+        const xpRequired = type.unlockXP * b.level;
+        const hasFood    = state.resources.normalFeed >= feedCost;
+        const hasXP      = state.resources.cityXP    >= xpRequired;
+        const canUpgrade = !atMax && hasFood && hasXP;
+
+        const upgradeRow = atMax
+          ? `<div style="font-size:10px;color:var(--yellow);margin-top:6px">🏆 Max Level (50)</div>`
+          : `<div style="font-size:10px;color:var(--muted);margin-top:6px;margin-bottom:4px">
+               Upgrade: <span style="color:${hasFood?'var(--green)':'var(--red)'}">🌱 ${feedCost}</span>
+               ${xpRequired > 0 ? `· <span style="color:${hasXP?'var(--green)':'var(--red)'}">🏙️ ${xpRequired} XP</span>` : ''}
+             </div>
+             <button onclick="upgradeBuilding('${b.id}')" ${canUpgrade ? '' : 'disabled'}>⬆️ Upgrade</button>`;
+
         return `
           <div class="building-card" style="margin-bottom:6px">
             <div class="building-header">
@@ -458,9 +517,7 @@
               </div>
             </div>
             ${worker ? `<div class="worker-slot">${worker.form?.emoji} ${worker.name} working here</div>` : ''}
-            <div style="margin-top:6px">
-              <button onclick="upgradeBuilding('${b.id}')">⬆️ Upgrade</button>
-            </div>
+            ${upgradeRow}
           </div>`;
       }).join('');
 
@@ -540,6 +597,13 @@
       closeHatch();
     }
 
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function formatDuration(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return m > 0 ? `${m}m ${s}s` : `${s}s`;
+    }
+
     // ── Game Actions ─────────────────────────────────────────────────────────
     function feed(petId, feedType) {
       vscode.postMessage({ type: 'feedPet', petId, feedType });
@@ -557,6 +621,10 @@
       vscode.postMessage({ type: 'upgradeBuilding', buildingId });
     }
 
+    function useAbility(petId) {
+      vscode.postMessage({ type: 'useAbility', petId });
+    }
+
     // ── Dev Actions ──────────────────────────────────────────────────────────
     function renderDev() {
       document.getElementById('dev-normalFeed').value    = state.resources.normalFeed;
@@ -564,13 +632,17 @@
       document.getElementById('dev-cityXP').value        = state.resources.cityXP;
       document.getElementById('dev-rareMaterials').value = state.resources.rareMaterials;
 
-      document.getElementById('dev-pet-list').innerHTML = state.pets.map(pet => `
-        <div class="dev-row">
-          <span style="flex:1;font-size:11px">${pet.form.emoji} ${pet.name} (Stage ${pet.stage})</span>
-          <button onclick="devForceEvolve('${pet.id}')" ${pet.stage >= 2 ? 'disabled' : ''}>
-            Force Evolve
-          </button>
-        </div>`).join('') || '<div style="color:var(--muted);font-size:11px;padding:4px 0">No pets</div>';
+      document.getElementById('dev-pet-list').innerHTML = state.pets.map(pet => {
+        const isAbilityPet = pet.stage >= 2 && pet.path === 'manual';
+        return `
+          <div class="dev-row">
+            <span style="flex:1;font-size:11px">${pet.form.emoji} ${pet.name} (Stage ${pet.stage}${isAbilityPet ? ' · ' + (pet.specialAbilityUnlocked ? '⚡ready' : '✓used') : ''})</span>
+            <button onclick="devForceEvolve('${pet.id}')" ${pet.stage >= 2 ? 'disabled' : ''}>
+              Force Evolve
+            </button>
+            ${isAbilityPet ? `<button onclick="devResetAbility('${pet.id}')" style="border-color:var(--mauve)">↺ Ability</button>` : ''}
+          </div>`;
+      }).join('') || '<div style="color:var(--muted);font-size:11px;padding:4px 0">No pets</div>';
     }
 
     function devSet(key) {
@@ -580,6 +652,7 @@
     function devAdd(key, amount)  { vscode.postMessage({ type: 'dev:add', key, amount }); }
     function devTick()             { vscode.postMessage({ type: 'dev:tick' }); }
     function devForceEvolve(petId) { vscode.postMessage({ type: 'dev:forceEvolve', petId }); }
+    function devResetAbility(petId){ vscode.postMessage({ type: 'dev:resetAbility', petId }); }
     function devReset()            { vscode.postMessage({ type: 'dev:reset' }); }
 
     // ── Init ─────────────────────────────────────────────────────────────────
