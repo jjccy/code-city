@@ -53,12 +53,15 @@ proxy without needing Copilot/Claude API hooks.
 Each pet has **two evolution paths** that branch at stage 1, determined by whether
 premium (manual) or normal (LLM) feed dominates:
 
-| Pet | LLM Path | Manual Path | Worker Role |
-|---|---|---|---|
-| 🔥 Ember | Ember → Inferno → Titan | Ember → Phoenix → **Seraph** | Builder |
-| 🌱 Sprout | Sprout → Grove → Forest | Sprout → Sage → **Oracle** | Farmer |
-| 💧 Droplet | Droplet → Stream → Torrent | Droplet → Tide → **Leviathan** | Miner |
-| ⚡ Spark | Spark → Current → Grid | Spark → Thunder → **Storm** | Researcher |
+| Pet | LLM Path | Manual Path | Worker Role | Normal cost | Premium cost |
+|---|---|---|---|---|---|
+| 🔥 Ember | Ember → Inferno → Titan | Ember → Phoenix → **Seraph** | Builder | 60 | 30 |
+| 🌱 Sprout | Sprout → Grove → Forest | Sprout → Sage → **Oracle** | Farmer | 50 | 25 |
+| 💧 Droplet | Droplet → Stream → Torrent | Droplet → Tide → **Leviathan** | Miner | 40 | 20 |
+| ⚡ Spark | Spark → Current → Grid | Spark → Thunder → **Storm** | Researcher | 70 | 35 |
+
+Hatching a new pet costs **20 normal feed** (`HATCH_COST` in `game-data.ts`).
+The hatch button is disabled when the player cannot afford it.
 
 ### Special Abilities (Manual Path Final Stage only)
 
@@ -101,10 +104,10 @@ everyone has tests set up. Replaced with universally achievable triggers:
 | Building | Emoji | Unlock (City XP) | Cost | Produces / Effect |
 |---|---|---|---|---|
 | Farm | 🌾 | 0 (free, starts with one) | 0 | 2 normal feed / min |
-| Workshop | 🔨 | 50 XP | 100 feed | 1 City XP / min |
-| Library | 📚 | 150 XP | 300 feed | 0.5 City XP / min + −2% evolution cost per level (max −50%) |
-| Mine | ⛏️ | 400 XP | 600 feed | Rare materials / min (5 needed to reach final evolution stage) |
-| Tower | 🗼 | 1000 XP | 2000 feed | +10% multiplier on ALL building output per level |
+| Workshop | 🔨 | 50 XP | 1,000 feed | 1 City XP / min |
+| Library | 📚 | 150 XP | 5,000 feed | 0.5 City XP / min + −2% evolution cost per level (max −50%) |
+| Mine | ⛏️ | 400 XP | 15,000 feed | Rare materials / min (5 needed to reach final evolution stage) |
+| Tower | 🗼 | 1000 XP | 50,000 feed | +10% multiplier on ALL building output per level |
 
 All buildings are multiplicatively boosted by:
 - Tower total-level bonus (`getTowerMultiplier = 1 + totalTowerLevel × 0.1`)

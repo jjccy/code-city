@@ -1,3 +1,8 @@
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Normal feed consumed when hatching a new pet */
+export const HATCH_COST = 20;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type FeedType = 'normal' | 'premium';
@@ -53,8 +58,8 @@ export const PET_SPECIES: PetSpecies[] = [
       { name: 'Seraph',   emoji: '✨', description: 'A legendary spirit of creation.' },
     ],
     workerRole: 'Builder',
-    normalFeedCost: 30,
-    premiumFeedCost: 15,
+    normalFeedCost: 60,
+    premiumFeedCost: 30,
   },
   {
     id: 'sprout',
@@ -70,8 +75,8 @@ export const PET_SPECIES: PetSpecies[] = [
       { name: 'Oracle',   emoji: '🍀', description: 'Sees paths others cannot.' },
     ],
     workerRole: 'Farmer',
-    normalFeedCost: 25,
-    premiumFeedCost: 12,
+    normalFeedCost: 50,
+    premiumFeedCost: 25,
   },
   {
     id: 'droplet',
@@ -87,8 +92,8 @@ export const PET_SPECIES: PetSpecies[] = [
       { name: 'Leviathan',emoji: '🐋', description: 'Master of the deep unknown.' },
     ],
     workerRole: 'Miner',
-    normalFeedCost: 20,
-    premiumFeedCost: 10,
+    normalFeedCost: 40,
+    premiumFeedCost: 20,
   },
   {
     id: 'spark',
@@ -104,8 +109,8 @@ export const PET_SPECIES: PetSpecies[] = [
       { name: 'Storm',    emoji: '🌪️',  description: 'Unstoppable creative energy.' },
     ],
     workerRole: 'Researcher',
-    normalFeedCost: 35,
-    premiumFeedCost: 18,
+    normalFeedCost: 70,
+    premiumFeedCost: 35,
   },
 ];
 
@@ -128,7 +133,7 @@ export const BUILDING_TYPES: BuildingType[] = [
     description: 'Workers here produce bonus city XP.',
     baseProduction: 1,
     unlockXP: 50,
-    cost: 100,
+    cost: 1000,
   },
   {
     id: 'library',
@@ -137,7 +142,7 @@ export const BUILDING_TYPES: BuildingType[] = [
     description: 'Researchers unlock new evolutions faster.',
     baseProduction: 1,
     unlockXP: 150,
-    cost: 300,
+    cost: 5000,
   },
   {
     id: 'mine',
@@ -146,7 +151,7 @@ export const BUILDING_TYPES: BuildingType[] = [
     description: 'Produces rare materials needed for final evolutions.',
     baseProduction: 1,
     unlockXP: 400,
-    cost: 600,
+    cost: 15000,
   },
   {
     id: 'tower',
@@ -155,7 +160,7 @@ export const BUILDING_TYPES: BuildingType[] = [
     description: 'Prestige structure. Boosts all workers in the city.',
     baseProduction: 0,
     unlockXP: 1000,
-    cost: 2000,
+    cost: 50000,
   },
 ];
 

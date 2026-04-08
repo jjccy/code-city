@@ -260,6 +260,7 @@
   <div id="panel-pets" class="panel active">
     <div id="pet-top">
       <button class="primary" id="btn-add-pet" onclick="openHatch()">+ Hatch New Pet</button>
+      <div id="hatch-cost-hint" style="font-size:10px;color:var(--muted);text-align:center"></div>
 
       <!-- Hatch form (replaces button when open) -->
       <div id="hatch-form" style="display:none">
@@ -386,6 +387,14 @@
     }
 
     function renderPets() {
+      const HATCH_COST = 20;
+      const canHatch = state.resources.normalFeed >= HATCH_COST;
+      const hatchBtn = document.getElementById('btn-add-pet');
+      hatchBtn.disabled = !canHatch;
+      hatchBtn.textContent = `+ Hatch New Pet (🌱 ${HATCH_COST})`;
+      document.getElementById('hatch-cost-hint').textContent =
+        canHatch ? '' : `Need ${HATCH_COST} normal feed to hatch`;
+
       const list = document.getElementById('pet-list');
       if (!state.pets.length) {
         list.innerHTML = '<div class="empty-state">No pets yet.<br>Hatch one to get started!</div>';

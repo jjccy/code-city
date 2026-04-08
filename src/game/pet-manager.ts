@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { SaveManager, PetSave } from './save-manager';
 import { CityManager } from './city-manager';
-import { PET_SPECIES, SPECIAL_ABILITIES, PetStage } from './game-data';
+import { PET_SPECIES, SPECIAL_ABILITIES, HATCH_COST, PetStage } from './game-data';
 
 function randomId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -52,6 +52,8 @@ export class PetManager {
   addPetDirect(speciesId: string, name: string): PetSave | undefined {
     const species = PET_SPECIES.find(s => s.id === speciesId);
     if (!species) { return; }
+    if (this.saveManager.save.resources.normalFeed < HATCH_COST) { return; }
+    this.saveManager.save.resources.normalFeed -= HATCH_COST;
     const pet: PetSave = {
       id: randomId(), speciesId, name, stage: 0,
       path: 'undecided', normalFedTotal: 0, premiumFedTotal: 0,

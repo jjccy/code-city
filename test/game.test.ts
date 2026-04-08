@@ -7,7 +7,7 @@ import { SaveManager } from '../src/game/save-manager';
 import { PetManager } from '../src/game/pet-manager';
 import { CityManager } from '../src/game/city-manager';
 import { FeedTracker } from '../src/game/feed-tracker';
-import { PET_SPECIES } from '../src/game/game-data';
+import { PET_SPECIES, HATCH_COST } from '../src/game/game-data';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -99,8 +99,26 @@ describe('PetManager — feeding', () => {
   });
 });
 
+describe('PetManager — hatch cost', () => {
+  it('addPetDirect deducts hatch cost from normalFeed', () => {
+    const { save, pets } = makeManagers();
+    save.save.resources.normalFeed = 50;
+    pets.addPetDirect('ember', 'Blaze');
+    assert.strictEqual(save.save.resources.normalFeed, 50 - HATCH_COST);
+    assert.strictEqual(save.save.pets.length, 1);
+  });
+
+  it('addPetDirect returns undefined when normalFeed < hatch cost', () => {
+    const { save, pets } = makeManagers();
+    save.save.resources.normalFeed = HATCH_COST - 1;
+    const result = pets.addPetDirect('ember', 'Blaze');
+    assert.strictEqual(result, undefined);
+    assert.strictEqual(save.save.pets.length, 0);
+  });
+});
+
 describe('PetManager — evolution', () => {
-  const droplet = PET_SPECIES.find(s => s.id === 'droplet')!; // normalFeedCost:20, premiumFeedCost:10
+  const droplet = PET_SPECIES.find(s => s.id === 'droplet')!; // normalFeedCost:40, premiumFeedCost:20
 
   it('undecided pet stays undecided below both thresholds', () => {
     const { save, pets } = makeManagers();
@@ -195,15 +213,15 @@ describe('PetManager — evolution', () => {
     save.save.city.buildings.push({ id: 'lib-1', typeId: 'library', level: 10 });
     save.save.resources.premiumFeed = 100;
 
-    // droplet premiumFeedCost: 10. Stage 0→1 threshold = 10. With 20% discount: ceil(10 * 0.8) = 8
+    // droplet premiumFeedCost: 20. Stage 0→1 threshold = 20. With 20% discount: ceil(20 * 0.8) = 16
     save.save.pets.push({
       id: 'p1', speciesId: 'droplet', name: 'Drop', stage: 0,
       path: 'undecided',
       normalFedTotal: 0,
-      premiumFedTotal: 7, // normally 10 needed, discounted to 8
+      premiumFedTotal: 15, // normally 20 needed, discounted to 16
       assignedTo: null, specialAbilityUnlocked: false,
     });
-    // One more premium feed → 8 total, should hit discounted threshold
+    // One more premium feed → 16 total, should hit discounted threshold
     pets.feedPet('p1', 'premium', 1);
     assert.strictEqual(save.save.pets[0].stage, 1, 'should evolve at discounted threshold');
   });
@@ -219,16 +237,16 @@ describe('PetManager — evolution', () => {
     });
     save.save.resources.premiumFeed = 100;
 
-    // droplet premiumFeedCost: 10. With Oracle 0.5: ceil(10 * 0.5) = 5
+    // droplet premiumFeedCost: 20. With Oracle 0.5: ceil(20 * 0.5) = 10
     save.save.pets.push({
       id: 'p1', speciesId: 'droplet', name: 'Drop', stage: 0,
       path: 'undecided',
       normalFedTotal: 0,
-      premiumFedTotal: 4, // normally needs 10, with oracle needs 5
+      premiumFedTotal: 9, // normally needs 20, with oracle needs 10
       assignedTo: null, specialAbilityUnlocked: false,
     });
     pets.feedPet('p1', 'premium', 1);
-    assert.strictEqual(save.save.pets[0].stage, 1, 'Oracle should allow evolution at 5 feed');
+    assert.strictEqual(save.save.pets[0].stage, 1, 'Oracle should allow evolution at 10 feed');
     // Oracle ability should be consumed
     assert.strictEqual(save.save.activeAbilities.length, 0, 'Oracle ability should be consumed on evolution');
   });
