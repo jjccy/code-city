@@ -59,7 +59,7 @@ export interface GameSave {
 function defaultSave(): GameSave {
   return {
     version: 1,
-    resources: { normalFeed: 5, premiumFeed: 2, cityXP: 0, rareMaterials: 0 },
+    resources: { normalFeed: 50, premiumFeed: 5, cityXP: 0, rareMaterials: 0 },
     pets: [],
     city: { level: 1, buildings: [{ id: 'farm-1', typeId: 'farm', level: 1 }] },
     stats: {

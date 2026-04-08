@@ -44,7 +44,7 @@ describe('SaveManager', () => {
     const sm = new SaveManager(dir);
     sm.load();
     assert.strictEqual(sm.save.version, 1);
-    assert.strictEqual(sm.save.resources.normalFeed, 5);
+    assert.strictEqual(sm.save.resources.normalFeed, 50);
     assert.ok(Array.isArray(sm.save.pets));
   });
 
@@ -64,7 +64,7 @@ describe('SaveManager', () => {
     const { save } = makeManagers();
     save.save.resources.normalFeed = 9999;
     save.reset();
-    assert.strictEqual(save.save.resources.normalFeed, 5);
+    assert.strictEqual(save.save.resources.normalFeed, 50);
   });
 });
 
@@ -458,7 +458,7 @@ describe('FeedTracker — daily bonus', () => {
     const tracker = makeFeedTracker(save, city);
     const got = tracker.checkDailyBonus();
     assert.ok(got);
-    assert.ok(save.save.resources.normalFeed > 5);
+    assert.ok(save.save.resources.normalFeed > 50);
     tracker.dispose();
   });
 

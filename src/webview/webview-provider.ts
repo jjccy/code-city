@@ -19,13 +19,14 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   ) {
     this.devMode = context.extensionMode === vscode.ExtensionMode.Development
       || vscode.workspace.getConfiguration('code-city').get<boolean>('devMode', false);
-    // Temporary diagnostic — remove before publish
-    console.log(`[Code City] extensionMode=${context.extensionMode} devMode=${this.devMode}`);
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
-    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.file(path.join(this.context.extensionPath, 'media'))],
+    };
     webviewView.webview.html = this.getHtml(webviewView.webview);
 
     // ── Hot reload (dev mode only) ─────────────────────────────────────────
@@ -174,8 +175,23 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         speciesList: PET_SPECIES,
         specialAbilities: SPECIAL_ABILITIES,
         devMode: this.devMode,
+        spriteUris: this.getSpriteUris(this.view.webview),
       },
     });
+  }
+
+  private getSpriteUris(webview: vscode.Webview): { pets: Record<string, string>; buildings: Record<string, string> } {
+    const sp = (rel: string) =>
+      webview.asWebviewUri(vscode.Uri.file(path.join(this.context.extensionPath, 'media', 'sprites', rel))).toString();
+    const pets: Record<string, string> = {};
+    for (const id of ['ember', 'sprout', 'droplet', 'spark']) {
+      pets[id] = sp(`pets/${id}.png`);
+    }
+    const buildings: Record<string, string> = {};
+    for (const id of ['farm', 'workshop', 'library', 'mine', 'tower']) {
+      buildings[id] = sp(`buildings/${id}.png`);
+    }
+    return { pets, buildings };
   }
 
   private getHtml(webview: vscode.Webview): string {
@@ -183,7 +199,13 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     const htmlPath  = path.join(mediaPath, 'main.html');
     let html = fs.readFileSync(htmlPath, 'utf8');
     const mediaUri = webview.asWebviewUri(vscode.Uri.file(mediaPath)).toString();
+    const jsUri = (name: string) =>
+      webview.asWebviewUri(vscode.Uri.file(path.join(mediaPath, name))).toString();
     html = html.replace(/\{\{mediaUri\}\}/g, mediaUri);
+    html = html.replace(/\{\{cspSource\}\}/g, webview.cspSource);
+    html = html.replace(/\{\{styleUri\}\}/g, jsUri('style.css'));
+    html = html.replace(/\{\{uiUri\}\}/g, jsUri('ui.js'));
+    html = html.replace(/\{\{pastureUri\}\}/g, jsUri('pasture.js'));
     return html;
   }
 }

@@ -4,352 +4,145 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
+        content="default-src 'none'; script-src 'unsafe-inline' {{cspSource}}; style-src 'unsafe-inline' {{cspSource}}; img-src {{cspSource}} data:;">
   <title>Code City</title>
-  <style>
-    :root {
-      --bg:       var(--vscode-editor-background, #1e1e2e);
-      --surface:  var(--vscode-editorWidget-background, #2a2a3e);
-      --border:   var(--vscode-widget-border, #3a3a5a);
-      --text:     var(--vscode-editor-foreground, #cdd6f4);
-      --muted:    var(--vscode-descriptionForeground, #6c7086);
-      --accent:   var(--vscode-focusBorder, #89b4fa);
-      --green:    var(--vscode-terminal-ansiGreen, #a6e3a1);
-      --yellow:   var(--vscode-terminal-ansiYellow, #f9e2af);
-      --red:      var(--vscode-terminal-ansiRed, #f38ba8);
-      --mauve:    #cba6f7;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--vscode-font-family, 'Segoe UI', sans-serif);
-      font-size: 12px;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* ── Inputs ── */
-    input[type="text"], input[type="number"] {
-      background: var(--bg);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 3px 6px;
-      font-size: 11px;
-      font-family: inherit;
-    }
-    input:focus { outline: none; border-color: var(--accent); }
-
-    /* ── Resource Bar ── */
-    #resources {
-      display: flex;
-      gap: 6px;
-      padding: 8px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
-      flex-shrink: 0;
-    }
-    .res-chip {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 2px 8px;
-      font-size: 11px;
-    }
-    .res-chip .val { font-weight: bold; color: var(--accent); }
-
-    /* ── Tabs ── */
-    #tabs {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 6px 4px;
-      cursor: pointer;
-      font-size: 11px;
-      color: var(--muted);
-      border-bottom: 2px solid transparent;
-      transition: all 0.15s;
-    }
-    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
-    .tab:hover  { color: var(--text); }
-    #tab-dev { color: var(--red); }
-
-    /* ── Panels ── */
-    .panel { display: none; flex-direction: column; flex: 1; min-height: 0; }
-    .panel.active { display: flex; }
-
-    /* City / Stats / Dev: whole panel scrolls */
-    #panel-city, #panel-stats, #panel-dev { overflow-y: auto; padding: 8px; gap: 8px; }
-
-    /* Pets: fixed top, scrollable list */
-    #panel-pets { overflow: hidden; padding: 8px; gap: 6px; }
-    #pet-top { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
-    #pet-list { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-
-    /* ── Hatch Form ── */
-    #hatch-form {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    #species-options {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-    .species-card {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 6px;
-      cursor: pointer;
-      text-align: center;
-      transition: border-color 0.15s;
-    }
-    .species-card:hover { border-color: var(--accent); }
-    .species-card-emoji { font-size: 22px; line-height: 1.2; }
-    .species-card-name  { font-weight: bold; font-size: 11px; margin-top: 2px; }
-    .species-card-desc  { font-size: 10px; color: var(--muted); margin-top: 2px; }
-    #hatch-name-row { display: flex; gap: 4px; align-items: center; }
-    #hatch-name-row input { flex: 1; }
-
-    /* ── Pet Cards ── */
-    .pet-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px;
-      flex-shrink: 0;
-    }
-    .pet-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .pet-emoji { font-size: 24px; line-height: 1; }
-    .pet-info  { flex: 1; }
-    .pet-name  { font-weight: bold; font-size: 13px; }
-    .pet-stage { font-size: 10px; color: var(--muted); }
-    .pet-path-manual { color: var(--mauve); font-size: 10px; }
-    .pet-path-llm    { color: var(--green); font-size: 10px; }
-
-    .feed-bar { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
-    .progress-wrap { flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
-    .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
-    .fill-normal  { background: var(--green); }
-    .fill-premium { background: var(--mauve); }
-
-    .pet-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
-
-    /* ── Building Cards ── */
-    .building-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px;
-    }
-    .building-header { display: flex; align-items: center; gap: 8px; }
-    .building-emoji  { font-size: 20px; }
-    .building-name   { font-weight: bold; }
-    .building-level  { font-size: 10px; color: var(--muted); }
-    .worker-slot     { font-size: 10px; color: var(--yellow); margin-top: 4px; }
-
-    .build-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-    .buildable-card {
-      background: var(--surface);
-      border: 1px dashed var(--border);
-      border-radius: 8px;
-      padding: 8px;
-      cursor: pointer;
-      text-align: center;
-      transition: border-color 0.15s;
-    }
-    .buildable-card:hover { border-color: var(--accent); }
-    .buildable-cost { font-size: 10px; color: var(--muted); margin-top: 4px; }
-
-    /* ── Stats ── */
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 11px;
-    }
-    .stat-val { color: var(--accent); font-weight: bold; }
-
-    /* ── Buttons ── */
-    button {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 3px 8px;
-      font-size: 11px;
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-    button:hover  { border-color: var(--accent); }
-    button.primary {
-      background: var(--accent);
-      color: var(--bg);
-      border-color: var(--accent);
-      font-weight: bold;
-    }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .section-title {
-      font-size: 11px;
-      font-weight: bold;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 4px 0;
-    }
-    .empty-state {
-      text-align: center;
-      color: var(--muted);
-      padding: 20px 8px;
-      font-size: 12px;
-    }
-
-    /* ── Dev Panel ── */
-    .dev-section { font-size: 10px; font-weight: bold; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
-    .dev-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; }
-    .dev-row label { width: 90px; font-size: 11px; color: var(--muted); }
-    .dev-row input { flex: 1; }
-    .dev-actions { display: flex; flex-wrap: wrap; gap: 4px; }
-    .dev-actions button { font-size: 10px; padding: 2px 6px; border-color: var(--red); }
-  </style>
+  <link rel="stylesheet" href="{{styleUri}}">
+  
 </head>
 <body>
+  <!-- ── Full-screen pasture canvas ── -->
+  <canvas id="pasture-canvas"></canvas>
+  <div id="pasture-empty">No pets yet.<br>Hatch a pet to see them roam!</div>
+
+  <!-- ── Floating resource bar (top) ── -->
   <div id="resources">
-    <div class="res-chip">🌱 <span id="r-normal" class="val">0</span></div>
+    <div class="res-chip">🌱 <span id="r-normal"  class="val">0</span></div>
     <div class="res-chip">⭐ <span id="r-premium" class="val">0</span></div>
-    <div class="res-chip">🏙️ <span id="r-xp" class="val">0</span> XP</div>
-    <div class="res-chip">💎 <span id="r-rare" class="val">0</span></div>
+    <div class="res-chip">🏙️ <span id="r-xp"      class="val">0</span> XP</div>
+    <div class="res-chip">💎 <span id="r-rare"    class="val">0</span></div>
   </div>
 
-  <div id="tabs">
-    <div class="tab active" data-tab="pets">🐾 Pets</div>
-    <div class="tab"        data-tab="city">🏙️ City</div>
-    <div class="tab"        data-tab="stats">📊 Stats</div>
-    <div class="tab"        data-tab="dev" id="tab-dev">🔧 Dev</div>
-  </div>
+  <!-- ── Open-drawer button ── -->
+  <button id="drawer-btn" onclick="openDrawer()">☰ Menu</button>
 
-  <!-- PETS PANEL -->
-  <div id="panel-pets" class="panel active">
-    <div id="pet-top">
-      <button class="primary" id="btn-add-pet" onclick="openHatch()">+ Hatch New Pet</button>
-      <div id="hatch-cost-hint" style="font-size:10px;color:var(--muted);text-align:center"></div>
+  <!-- ── Bottom sheet drawer ── -->
+  <div id="drawer">
+    <div id="drawer-handle" onclick="closeDrawer()">
+      <div class="handle-pill"></div>
+    </div>
 
-      <!-- Hatch form (replaces button when open) -->
-      <div id="hatch-form" style="display:none">
-        <!-- Step 1: pick species -->
-        <div id="hatch-species">
-          <div class="section-title">Choose species</div>
-          <div id="species-options"></div>
-          <button onclick="closeHatch()" style="width:100%;margin-top:2px">✕ Cancel</button>
-        </div>
-        <!-- Step 2: name -->
-        <div id="hatch-name" style="display:none">
-          <div class="section-title">Name your pet</div>
-          <div id="hatch-name-row">
-            <span id="hatch-preview-emoji" style="font-size:20px"></span>
-            <input id="pet-name-input" type="text" placeholder="Enter name…"
-                   onkeydown="if(event.key==='Enter')confirmHatch()">
-            <button class="primary" onclick="confirmHatch()">Hatch!</button>
-            <button onclick="backToSpecies()" title="Back">←</button>
+    <div id="tabs">
+      <div class="tab active" data-tab="pets">🐾 Pets</div>
+      <div class="tab"        data-tab="city">🏙️ City</div>
+      <div class="tab"        data-tab="stats">📊 Stats</div>
+      <div class="tab"        data-tab="dev" id="tab-dev">🔧 Dev</div>
+    </div>
+
+    <div id="drawer-content">
+      <!-- PETS PANEL -->
+      <div id="panel-pets" class="panel active">
+        <div id="pet-top">
+          <button class="primary" id="btn-add-pet" onclick="openHatch()">+ Hatch New Pet</button>
+          <div id="hatch-cost-hint" style="font-size:10px;color:var(--muted);text-align:center"></div>
+
+          <div id="hatch-form" style="display:none">
+            <div id="hatch-species">
+              <div class="section-title">Choose species</div>
+              <div id="species-options"></div>
+              <button onclick="closeHatch()" style="width:100%;margin-top:2px">✕ Cancel</button>
+            </div>
+            <div id="hatch-name" style="display:none">
+              <div class="section-title">Name your pet</div>
+              <div id="hatch-name-row">
+                <span id="hatch-preview-emoji" style="font-size:20px"></span>
+                <input id="pet-name-input" type="text" placeholder="Enter name…"
+                       onkeydown="if(event.key==='Enter')confirmHatch()">
+                <button class="primary" onclick="confirmHatch()">Hatch!</button>
+                <button onclick="backToSpecies()" title="Back">←</button>
+              </div>
+            </div>
           </div>
         </div>
+        <div id="pet-list"></div>
       </div>
-    </div>
 
-    <div id="pet-list"></div>
-  </div>
+      <!-- CITY PANEL -->
+      <div id="panel-city" class="panel">
+        <div id="city-bonuses" style="font-size:10px;color:var(--yellow);padding:2px 0"></div>
+        <div class="section-title">🏗️ Your Buildings</div>
+        <div id="building-list"></div>
+        <div class="section-title" style="margin-top:8px">🔨 Build</div>
+        <div id="build-options" class="build-grid"></div>
+      </div>
 
-  <!-- CITY PANEL -->
-  <div id="panel-city" class="panel">
-    <div id="city-bonuses" style="font-size:10px;color:var(--yellow);padding:2px 0"></div>
-    <div class="section-title">🏗️ Your Buildings</div>
-    <div id="building-list"></div>
-    <div class="section-title" style="margin-top:8px">🔨 Build</div>
-    <div id="build-options" class="build-grid"></div>
-  </div>
+      <!-- STATS PANEL -->
+      <div id="panel-stats" class="panel">
+        <div id="stats-list"></div>
+      </div>
 
-  <!-- STATS PANEL -->
-  <div id="panel-stats" class="panel">
-    <div id="stats-list"></div>
-  </div>
+      <!-- DEV PANEL -->
+      <div id="panel-dev" class="panel">
+        <div class="dev-section">Resources</div>
+        <div class="dev-row">
+          <label>🌱 Normal Feed</label>
+          <input id="dev-normalFeed" type="number" min="0">
+          <button onclick="devSet('normalFeed')">Set</button>
+        </div>
+        <div class="dev-row">
+          <label>⭐ Premium Feed</label>
+          <input id="dev-premiumFeed" type="number" min="0">
+          <button onclick="devSet('premiumFeed')">Set</button>
+        </div>
+        <div class="dev-row">
+          <label>🏙️ City XP</label>
+          <input id="dev-cityXP" type="number" min="0">
+          <button onclick="devSet('cityXP')">Set</button>
+        </div>
+        <div class="dev-row">
+          <label>💎 Rare Mats</label>
+          <input id="dev-rareMaterials" type="number" min="0" step="0.1">
+          <button onclick="devSet('rareMaterials')">Set</button>
+        </div>
 
-  <!-- DEV PANEL (only visible when devMode is true) -->
-  <div id="panel-dev" class="panel">
-    <div class="dev-section">Resources</div>
-    <div class="dev-row">
-      <label>🌱 Normal Feed</label>
-      <input id="dev-normalFeed" type="number" min="0">
-      <button onclick="devSet('normalFeed')">Set</button>
-    </div>
-    <div class="dev-row">
-      <label>⭐ Premium Feed</label>
-      <input id="dev-premiumFeed" type="number" min="0">
-      <button onclick="devSet('premiumFeed')">Set</button>
-    </div>
-    <div class="dev-row">
-      <label>🏙️ City XP</label>
-      <input id="dev-cityXP" type="number" min="0">
-      <button onclick="devSet('cityXP')">Set</button>
-    </div>
-    <div class="dev-row">
-      <label>💎 Rare Mats</label>
-      <input id="dev-rareMaterials" type="number" min="0" step="0.1">
-      <button onclick="devSet('rareMaterials')">Set</button>
-    </div>
+        <div class="dev-section" style="margin-top:8px">Quick Add</div>
+        <div class="dev-actions">
+          <button onclick="devAdd('normalFeed', 100)">+100 🌱</button>
+          <button onclick="devAdd('normalFeed', 1000)">+1000 🌱</button>
+          <button onclick="devAdd('premiumFeed', 50)">+50 ⭐</button>
+          <button onclick="devAdd('cityXP', 200)">+200 XP</button>
+          <button onclick="devAdd('rareMaterials', 10)">+10 💎</button>
+        </div>
 
-    <div class="dev-section" style="margin-top:8px">Quick Add</div>
-    <div class="dev-actions">
-      <button onclick="devAdd('normalFeed', 100)">+100 🌱</button>
-      <button onclick="devAdd('normalFeed', 1000)">+1000 🌱</button>
-      <button onclick="devAdd('premiumFeed', 50)">+50 ⭐</button>
-      <button onclick="devAdd('cityXP', 200)">+200 XP</button>
-      <button onclick="devAdd('rareMaterials', 10)">+10 💎</button>
-    </div>
+        <div class="dev-section" style="margin-top:8px">Actions</div>
+        <div class="dev-actions">
+          <button onclick="devTick()">⏱️ Force Tick</button>
+          <button onclick="devReset()" style="border-color:var(--red)">🗑️ Reset Save</button>
+        </div>
 
-    <div class="dev-section" style="margin-top:8px">Actions</div>
-    <div class="dev-actions">
-      <button onclick="devTick()">⏱️ Force Tick</button>
-      <button onclick="devReset()" style="border-color:var(--red)">🗑️ Reset Save</button>
-    </div>
+        <div class="dev-section" style="margin-top:8px">Pets</div>
+        <div id="dev-pet-list"></div>
+      </div>
+    </div><!-- #drawer-content -->
+  </div><!-- #drawer -->
 
-    <div class="dev-section" style="margin-top:8px">Pets</div>
-    <div id="dev-pet-list"></div>
-  </div>
-
+  <script src="{{uiUri}}"></script>
+  <script src="{{pastureUri}}"></script>
   <script>
     const vscode = acquireVsCodeApi();
     let state = null;
-    let hatchSpeciesId = null; // currently selected species in hatch flow
+    let hatchSpeciesId = null;
 
-    // ── Tabs ────────────────────────────────────────────────────────────────
+    // ── Drawer ───────────────────────────────────────────────────────────────
+    function openDrawer() {
+      document.getElementById('drawer').classList.add('open');
+      document.getElementById('drawer-btn').classList.add('hidden');
+    }
+    function closeDrawer() {
+      document.getElementById('drawer').classList.remove('open');
+      document.getElementById('drawer-btn').classList.remove('hidden');
+    }
+
+    // ── Tabs ─────────────────────────────────────────────────────────────────
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -359,13 +152,9 @@
       });
     });
 
-    // ── State Updates ────────────────────────────────────────────────────────
+    // ── State ────────────────────────────────────────────────────────────────
     window.addEventListener('message', e => {
-      console.log('[Code City webview] message:', e.data.type, e.data.data?.devMode);
-      if (e.data.type === 'state') {
-        state = e.data.data;
-        render();
-      }
+      if (e.data.type === 'state') { state = e.data.data; render(); }
     });
 
     function render() {
@@ -374,295 +163,12 @@
       renderPets();
       renderCity();
       renderStats();
+      syncPastureSprites();
+      if (!pastureActive) { pastureActive = true; startPasture(); }
       const devTab = document.getElementById('tab-dev');
       devTab.style.display = state.devMode === false ? 'none' : '';
       if (state.devMode) { renderDev(); }
     }
-
-    function renderResources() {
-      document.getElementById('r-normal').textContent  = state.resources.normalFeed;
-      document.getElementById('r-premium').textContent = state.resources.premiumFeed;
-      document.getElementById('r-xp').textContent      = state.resources.cityXP;
-      document.getElementById('r-rare').textContent    = state.resources.rareMaterials.toFixed(1);
-    }
-
-    function renderPets() {
-      const HATCH_COST = 20;
-      const canHatch = state.resources.normalFeed >= HATCH_COST;
-      const hatchBtn = document.getElementById('btn-add-pet');
-      hatchBtn.disabled = !canHatch;
-      hatchBtn.textContent = `+ Hatch New Pet (🌱 ${HATCH_COST})`;
-      document.getElementById('hatch-cost-hint').textContent =
-        canHatch ? '' : `Need ${HATCH_COST} normal feed to hatch`;
-
-      const list = document.getElementById('pet-list');
-      if (!state.pets.length) {
-        list.innerHTML = '<div class="empty-state">No pets yet.<br>Hatch one to get started!</div>';
-        return;
-      }
-
-      list.innerHTML = state.pets.map(pet => {
-        const species = state.speciesList.find(s => s.id === pet.speciesId);
-        const stageLabel = ['Baby', 'Evolved', 'Final'][pet.stage];
-        const pathLabel  = pet.path === 'undecided' ? '' :
-          pet.path === 'manual'
-            ? '<span class="pet-path-manual">⭐ Manual path</span>'
-            : '<span class="pet-path-llm">🤖 LLM path</span>';
-
-        const normalMax  = species.normalFeedCost  * (pet.stage + 1);
-        const premiumMax = species.premiumFeedCost * (pet.stage + 1);
-        const normalPct  = Math.min(100, Math.round(pet.normalFedTotal  / normalMax  * 100));
-        const premiumPct = Math.min(100, Math.round(pet.premiumFedTotal / premiumMax * 100));
-
-        const assigned = state.city.buildings.find(b => pet.assignedTo === b.id);
-        const assignedLabel = assigned
-          ? `🔨 Working at ${state.buildingTypes.find(t=>t.id===assigned.typeId)?.name}`
-          : '';
-
-        // ── Feed button gate logic ────────────────────────────────────────
-        const isMax        = pet.stage >= 2;
-        const normalBlocked  = pet.path === 'manual'; // manual path: normal irrelevant
-        const premiumBlocked = pet.path === 'llm';    // llm path: premium irrelevant
-        const normalDisabled  = isMax || normalBlocked  || normalPct  >= 100 || state.resources.normalFeed  < 1;
-        const premiumDisabled = isMax || premiumBlocked || premiumPct >= 100 || state.resources.premiumFeed < 1;
-
-        // ── Special ability ───────────────────────────────────────────────
-        const isManualFinal = pet.stage >= 2 && pet.path === 'manual';
-        const formName = pet.form.name.toLowerCase();
-        const abilityDef = isManualFinal && state.specialAbilities
-          ? state.specialAbilities[formName]
-          : null;
-
-        let abilityUI = '';
-        if (abilityDef) {
-          const activeAbility = (state.activeAbilities || []).find(
-            a => a.petId === pet.id && a.expiresAt > Date.now()
-          );
-          abilityUI = `<div style="font-size:10px;color:var(--mauve);margin-top:2px">${abilityDef.description}</div>`;
-          if (pet.specialAbilityUnlocked) {
-            abilityUI += `<button onclick="useAbility('${pet.id}')" style="margin-top:4px;border-color:var(--mauve);color:var(--mauve)">⚡ Use Ability</button>`;
-          } else if (activeAbility) {
-            const remSec = Math.ceil((activeAbility.expiresAt - Date.now()) / 1000);
-            abilityUI += `<div style="font-size:10px;color:var(--yellow);margin-top:2px">⏱️ Active: ${formatDuration(remSec)} remaining</div>`;
-          } else {
-            abilityUI += `<div style="font-size:10px;color:var(--muted);margin-top:2px">✓ Ability used</div>`;
-          }
-        }
-
-        return `
-          <div class="pet-card">
-            <div class="pet-header">
-              <div class="pet-emoji">${pet.form.emoji}</div>
-              <div class="pet-info">
-                <div class="pet-name">${pet.name}</div>
-                <div class="pet-stage">${pet.form.name} · ${stageLabel} ${pathLabel}</div>
-                ${assignedLabel ? `<div style="font-size:10px;color:var(--yellow)">${assignedLabel}</div>` : ''}
-                ${abilityUI}
-              </div>
-            </div>
-            ${isMax ? '<div style="font-size:10px;color:var(--yellow);margin-bottom:4px">🏆 Max stage — no further evolution</div>' : ''}
-            ${pet.stage === 1 ? `<div style="font-size:10px;color:${state.resources.rareMaterials >= 5 ? 'var(--green)' : 'var(--red)'};margin-bottom:4px">💎 Final evolution needs 5 rare mats (have ${state.resources.rareMaterials.toFixed(1)})</div>` : ''}
-            <div class="feed-bar">
-              <span style="font-size:10px;white-space:nowrap">🌱 ${normalPct}%</span>
-              <div class="progress-wrap"><div class="progress-fill fill-normal" style="width:${normalPct}%"></div></div>
-            </div>
-            <div class="feed-bar">
-              <span style="font-size:10px;white-space:nowrap">⭐ ${premiumPct}%</span>
-              <div class="progress-wrap"><div class="progress-fill fill-premium" style="width:${premiumPct}%"></div></div>
-            </div>
-            <div class="pet-actions">
-              <button onclick="feed('${pet.id}','normal')" ${normalDisabled ? 'disabled' : ''}>
-                🌱 Feed (${state.resources.normalFeed})
-              </button>
-              <button onclick="feed('${pet.id}','premium')" ${premiumDisabled ? 'disabled' : ''}>
-                ⭐ Premium (${state.resources.premiumFeed})
-              </button>
-              <button onclick="showAssign('${pet.id}')">🏗️ Assign</button>
-            </div>
-          </div>`;
-      }).join('');
-    }
-
-    function renderCity() {
-      const buildingList = document.getElementById('building-list');
-      const buildOptions = document.getElementById('build-options');
-
-      // City-wide bonus hints
-      const towerMult     = state.towerMultiplier ?? 1;
-      const libraryDisc   = state.libraryDiscount ?? 0;
-      const hints = [];
-      if (towerMult > 1)    { hints.push(`🗼 Tower bonus: +${Math.round((towerMult - 1) * 100)}% all output`); }
-      if (libraryDisc > 0)  { hints.push(`📚 Library: −${Math.round(libraryDisc * 100)}% evolution cost`); }
-      document.getElementById('city-bonuses').textContent = hints.join('  ·  ');
-
-      buildingList.innerHTML = state.city.buildings.map(b => {
-        const type   = state.buildingTypes.find(t => t.id === b.typeId);
-        const worker = state.pets.find(p => p.assignedTo === b.id);
-
-        // Mirrors CityManager.upgradeBuilding gate logic
-        const atMax      = b.level >= 50;
-        const baseCost   = Math.max(50, type.cost);
-        const feedCost   = baseCost * b.level * 2;
-        const xpRequired = type.unlockXP * b.level;
-        const hasFood    = state.resources.normalFeed >= feedCost;
-        const hasXP      = state.resources.cityXP    >= xpRequired;
-        const canUpgrade = !atMax && hasFood && hasXP;
-
-        const upgradeRow = atMax
-          ? `<div style="font-size:10px;color:var(--yellow);margin-top:6px">🏆 Max Level (50)</div>`
-          : `<div style="font-size:10px;color:var(--muted);margin-top:6px;margin-bottom:4px">
-               Upgrade: <span style="color:${hasFood?'var(--green)':'var(--red)'}">🌱 ${feedCost}</span>
-               ${xpRequired > 0 ? `· <span style="color:${hasXP?'var(--green)':'var(--red)'}">🏙️ ${xpRequired} XP</span>` : ''}
-             </div>
-             <button onclick="upgradeBuilding('${b.id}')" ${canUpgrade ? '' : 'disabled'}>⬆️ Upgrade</button>`;
-
-        return `
-          <div class="building-card" style="margin-bottom:6px">
-            <div class="building-header">
-              <div class="building-emoji">${type.emoji}</div>
-              <div>
-                <div class="building-name">${type.name} <span class="building-level">Lv ${b.level}</span></div>
-                <div style="font-size:10px;color:var(--muted)">${type.description}</div>
-              </div>
-            </div>
-            ${worker ? `<div class="worker-slot">${worker.form?.emoji} ${worker.name} working here</div>` : ''}
-            ${upgradeRow}
-          </div>`;
-      }).join('');
-
-      const buildable = state.unlockedBuildings.filter(t => t.cost > 0);
-      buildOptions.innerHTML = buildable.map(t => `
-        <div class="buildable-card" onclick="buildBuilding('${t.id}')">
-          <div>${t.emoji}</div>
-          <div style="font-weight:bold;font-size:11px">${t.name}</div>
-          <div class="buildable-cost">🌱 ${t.cost} feed · ${t.unlockXP} XP needed</div>
-        </div>`).join('') || '<div class="empty-state" style="grid-column:1/-1">Earn more City XP to unlock buildings.</div>';
-    }
-
-    function renderStats() {
-      const s = state.stats;
-      const rows = [
-        ['🔥 Manual chars typed',   s.totalManualChars.toLocaleString()],
-        ['🤖 LLM chars accepted',   s.totalLLMChars.toLocaleString()],
-        ['🏅 Commits',              s.totalCommits],
-        ['📅 Login streak',         `${s.streakDays} days`],
-        ['⚡ Longest typing streak', `${s.longestTypingStreak}s`],
-        ['🏙️ City level',           state.city.level],
-        ['🐾 Pets hatched',         state.pets.length],
-      ];
-      document.getElementById('stats-list').innerHTML =
-        rows.map(([l, v]) => `<div class="stat-row"><span>${l}</span><span class="stat-val">${v}</span></div>`).join('');
-    }
-
-    // ── Hatch Flow ───────────────────────────────────────────────────────────
-    function openHatch() {
-      hatchSpeciesId = null;
-      document.getElementById('btn-add-pet').style.display = 'none';
-      document.getElementById('hatch-form').style.display  = '';
-      document.getElementById('hatch-species').style.display = '';
-      document.getElementById('hatch-name').style.display    = 'none';
-      renderSpeciesOptions();
-    }
-
-    function closeHatch() {
-      hatchSpeciesId = null;
-      document.getElementById('hatch-form').style.display  = 'none';
-      document.getElementById('btn-add-pet').style.display = '';
-    }
-
-    function renderSpeciesOptions() {
-      if (!state) { return; }
-      document.getElementById('species-options').innerHTML =
-        state.speciesList.map(s => `
-          <div class="species-card" onclick="pickSpecies('${s.id}')">
-            <div class="species-card-emoji">${s.llmPath[0].emoji}</div>
-            <div class="species-card-name">${s.baseName}</div>
-            <div class="species-card-desc">${s.llmPath[0].description}</div>
-          </div>`).join('');
-    }
-
-    function pickSpecies(speciesId) {
-      hatchSpeciesId = speciesId;
-      const species = state.speciesList.find(s => s.id === speciesId);
-      document.getElementById('hatch-preview-emoji').textContent = species.llmPath[0].emoji;
-      document.getElementById('pet-name-input').value = species.baseName;
-      document.getElementById('hatch-species').style.display = 'none';
-      document.getElementById('hatch-name').style.display    = '';
-      document.getElementById('pet-name-input').focus();
-      document.getElementById('pet-name-input').select();
-    }
-
-    function backToSpecies() {
-      hatchSpeciesId = null;
-      document.getElementById('hatch-name').style.display    = 'none';
-      document.getElementById('hatch-species').style.display = '';
-    }
-
-    function confirmHatch() {
-      if (!hatchSpeciesId) { return; }
-      const name = document.getElementById('pet-name-input').value.trim();
-      if (!name) { document.getElementById('pet-name-input').focus(); return; }
-      vscode.postMessage({ type: 'addPetDirect', speciesId: hatchSpeciesId, name });
-      closeHatch();
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-    function formatDuration(sec) {
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      return m > 0 ? `${m}m ${s}s` : `${s}s`;
-    }
-
-    // ── Game Actions ─────────────────────────────────────────────────────────
-    function feed(petId, feedType) {
-      vscode.postMessage({ type: 'feedPet', petId, feedType });
-    }
-
-    function showAssign(petId) {
-      vscode.postMessage({ type: 'showAssign', petId, buildings: state.city.buildings.map(b => b.id) });
-    }
-
-    function buildBuilding(typeId) {
-      vscode.postMessage({ type: 'buildBuilding', typeId });
-    }
-
-    function upgradeBuilding(buildingId) {
-      vscode.postMessage({ type: 'upgradeBuilding', buildingId });
-    }
-
-    function useAbility(petId) {
-      vscode.postMessage({ type: 'useAbility', petId });
-    }
-
-    // ── Dev Actions ──────────────────────────────────────────────────────────
-    function renderDev() {
-      document.getElementById('dev-normalFeed').value    = state.resources.normalFeed;
-      document.getElementById('dev-premiumFeed').value   = state.resources.premiumFeed;
-      document.getElementById('dev-cityXP').value        = state.resources.cityXP;
-      document.getElementById('dev-rareMaterials').value = state.resources.rareMaterials;
-
-      document.getElementById('dev-pet-list').innerHTML = state.pets.map(pet => {
-        const isAbilityPet = pet.stage >= 2 && pet.path === 'manual';
-        return `
-          <div class="dev-row">
-            <span style="flex:1;font-size:11px">${pet.form.emoji} ${pet.name} (Stage ${pet.stage}${isAbilityPet ? ' · ' + (pet.specialAbilityUnlocked ? '⚡ready' : '✓used') : ''})</span>
-            <button onclick="devForceEvolve('${pet.id}')" ${pet.stage >= 2 ? 'disabled' : ''}>
-              Force Evolve
-            </button>
-            ${isAbilityPet ? `<button onclick="devResetAbility('${pet.id}')" style="border-color:var(--mauve)">↺ Ability</button>` : ''}
-          </div>`;
-      }).join('') || '<div style="color:var(--muted);font-size:11px;padding:4px 0">No pets</div>';
-    }
-
-    function devSet(key) {
-      const val = parseFloat(document.getElementById('dev-' + key).value);
-      if (!isNaN(val)) { vscode.postMessage({ type: 'dev:set', key, value: val }); }
-    }
-    function devAdd(key, amount)  { vscode.postMessage({ type: 'dev:add', key, amount }); }
-    function devTick()             { vscode.postMessage({ type: 'dev:tick' }); }
-    function devForceEvolve(petId) { vscode.postMessage({ type: 'dev:forceEvolve', petId }); }
-    function devResetAbility(petId){ vscode.postMessage({ type: 'dev:resetAbility', petId }); }
-    function devReset()            { vscode.postMessage({ type: 'dev:reset' }); }
 
     // ── Init ─────────────────────────────────────────────────────────────────
     vscode.postMessage({ type: 'ready' });

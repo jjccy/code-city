@@ -138,6 +138,7 @@ D:\oo\code-city\
 │   ├── game/
 │   │   ├── game-data.ts          # Static data: species, buildings, SpecialAbility records
 │   │   ├── save-manager.ts       # JSON save/load with 500ms debounced writes
+│   │   │                         # defaultSave: 50 normalFeed, 5 premiumFeed
 │   │   ├── feed-tracker.ts       # Text change listener, streak timer, daily bonus
 │   │   │                         # Leviathan ability doubles getStreakIdleMs()
 │   │   ├── pet-manager.ts        # Hatch, feed, evolve, useAbility, forceResetAbility
@@ -145,13 +146,39 @@ D:\oo\code-city\
 │   │                             #   getTotalLibraryDiscount, getActiveMultiplier
 │   └── webview/
 │       └── webview-provider.ts   # Sidebar webview, message routing
+│                                 # getSpriteUris() → { pets: {speciesId→uri}, buildings: {typeId→uri} }
+│                                 # getHtml() injects {{styleUri}}, {{uiUri}}, {{pastureUri}}, {{cspSource}}
+│                                 # localResourceRoots covers all of media/
 ├── media/
-│   ├── main.html                 # Sidebar UI: Pets | City | Stats | Dev tabs
+│   ├── main.html                 # HTML skeleton + lean bootstrap (state var, tabs, render())
+│   │                             # Layout: full-screen pasture canvas behind everything;
+│   │                             #   floating resource bar at top; "☰ Menu" pill at bottom;
+│   │                             #   bottom-sheet drawer (70vh) slides up for Pets/City/Stats/Dev
+│   │                             # Loads style.css, ui.js, pasture.js as external resources
+│   ├── style.css                 # All CSS: variables, layout, components (drawer, tabs, cards…)
+│   ├── ui.js                     # All render functions + game action postMessage wrappers
+│   │                             #   renderResources, renderPets, renderCity, renderStats,
+│   │                             #   renderDev, hatch flow (openHatch…confirmHatch), formatDuration
+│   ├── pasture.js                # Canvas animation engine — always-on, starts with first state (20 FPS)
+│   │                             #   PET_FRAMES: per-stage frame atlas (baby blob / final humanoid)
+│   │                             #   PetSprite: walk/idle/action states; walk flip per facing dir
+│   │                             #   Final action = 6-frame fire burst (2-frame intro, loop 2-5)
+│   │                             #   startPasture/stopPasture/pastureLoop/syncPastureSprites
+│   ├── sprites/
+│   │   ├── messy_1.png           # Source sheet (CC0, OpenGameArt); 786×326; input for pet gen
+│   │   ├── pets/                 # {speciesId}.png — hue-rotated from messy_1 per species
+│   │   │                         #   ember=0°, sprout=+90°, droplet=+165°, spark=+220°
+│   │   └── buildings/            # {typeId}.png — 32×32 static building sprites
 │   └── icon.svg                  # Extension icon
+├── scripts/
+│   ├── generate-sprites.js       # Regenerates 32×32 building PNGs (pure Node.js)
+│   │                              # Run: node scripts/generate-sprites.js
+│   └── generate-pet-sprites.js   # Regenerates per-species pet PNGs from messy_1.png
+│                                  # Run: node scripts/generate-pet-sprites.js
 ├── test/
 │   ├── setup.js                  # ts-node + vscode mock
 │   ├── vscode.mock.ts            # Minimal vscode stub
-│   └── game.test.ts              # 41 unit tests
+│   └── game.test.ts              # 43 unit tests
 ├── package.json                  # VS Code extension manifest
 └── tsconfig.json
 ```
@@ -165,12 +192,14 @@ On Windows this is typically:
 
 ### Save Schema (v1)
 
+Default starting resources: `normalFeed: 50, premiumFeed: 5` (enough to hatch 2 pets immediately).
+
 ```json
 {
   "version": 1,
   "resources": {
-    "normalFeed": 0,
-    "premiumFeed": 0,
+    "normalFeed": 50,
+    "premiumFeed": 5,
     "cityXP": 0,
     "rareMaterials": 0
   },
@@ -344,8 +373,16 @@ Coverage areas:
 
 ## Known Gaps / Future Work
 
-- [ ] **Pet sprites** — currently emoji. Add pixel art PNG sprite sheets (32×32 / 48×48,
-      4 cols × 12 rows format — same as pokemon-pets uses)
+- [x] **Pet sprites** — per-species PNGs generated from CC0 source `messy_1.png`
+      (OpenGameArt) via hue rotation: `scripts/generate-pet-sprites.js`.
+      Building sprites in `media/sprites/buildings/{typeId}.png` (32×32).
+      Building sprites regenerated via `scripts/generate-sprites.js`.
+
+- [x] **Pasture view** — always-visible canvas at top of sidebar (180px, 20 FPS).
+      Pets freely roam with walk/idle/action states; size scales with evolution stage.
+      Baby/mid use blob frames; final stage uses humanoid frames with 6-frame fire-burst
+      action (2-frame intro then looping last 4). Falls back to emoji when sprites missing.
+      Tabs below are Pets | City | Stats | Dev (no separate Pasture tab).
 - [ ] **Worker assign UI** — currently routes through VS Code QuickPick. Could be
       drag-and-drop in the webview
 - [ ] **Sound effects** — vscode webview can play Audio

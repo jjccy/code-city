@@ -182,14 +182,6 @@ export class PetManager {
     }
   }
 
-  removePet(petId: string): void {
-    const idx = this.saveManager.save.pets.findIndex(p => p.id === petId);
-    if (idx !== -1) {
-      this.saveManager.save.pets.splice(idx, 1);
-      this.saveManager.scheduleSave();
-    }
-  }
-
   getForm(pet: PetSave) {
     const species = PET_SPECIES.find(s => s.id === pet.speciesId)!;
     const path = pet.path === 'manual' ? species.manualPath : species.llmPath;
