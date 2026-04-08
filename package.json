@@ -2,15 +2,21 @@
   "name": "code-city",
   "displayName": "Code City",
   "description": "An idle dev civilization — feed pets with your typing, build a city as you code.",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "publisher": "jjccy",
   "repository": {
     "type": "git",
     "url": "https://github.com/jjccy/code-city"
   },
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Other"],
-  "activationEvents": ["onStartupFinished"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "views": {
@@ -24,9 +30,18 @@
       ]
     },
     "commands": [
-      { "command": "code-city.addPet",         "title": "Code City: Add Pet" },
-      { "command": "code-city.collectResources","title": "Code City: Collect Resources" },
-      { "command": "code-city.openPanel",       "title": "Code City: Open Panel" }
+      {
+        "command": "code-city.addPet",
+        "title": "Code City: Add Pet"
+      },
+      {
+        "command": "code-city.collectResources",
+        "title": "Code City: Collect Resources"
+      },
+      {
+        "command": "code-city.openPanel",
+        "title": "Code City: Open Panel"
+      }
     ],
     "configuration": {
       "title": "Code City",
