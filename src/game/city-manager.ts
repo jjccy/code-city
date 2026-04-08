@@ -68,16 +68,23 @@ export class CityManager {
     return true;
   }
 
+  static readonly MAX_BUILDING_LEVEL = 50;
+
   upgradeBuilding(buildingId: string): boolean {
     const save     = this.saveManager.save;
     const building = save.city.buildings.find(b => b.id === buildingId);
     if (!building) { return false; }
+    if (building.level >= CityManager.MAX_BUILDING_LEVEL) { return false; }
 
-    const type = BUILDING_TYPES.find(t => t.id === building.typeId)!;
-    const cost = type.cost * building.level * 2;
-    if (save.resources.normalFeed < cost) { return false; }
+    const type       = BUILDING_TYPES.find(t => t.id === building.typeId)!;
+    const baseCost   = Math.max(50, type.cost);           // floor for free buildings (e.g. Farm)
+    const feedCost   = baseCost * building.level * 2;
+    const xpRequired = type.unlockXP * building.level;    // XP gate scales per level
 
-    save.resources.normalFeed -= cost;
+    if (save.resources.cityXP    < xpRequired) { return false; }
+    if (save.resources.normalFeed < feedCost)  { return false; }
+
+    save.resources.normalFeed -= feedCost;
     building.level++;
     this.saveManager.scheduleSave();
     return true;

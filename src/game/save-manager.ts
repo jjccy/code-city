@@ -122,4 +122,10 @@ export class SaveManager {
     }
     fs.writeFileSync(this.savePath, JSON.stringify(this._save, null, 2));
   }
+
+  /** Dev-only: wipe save back to defaults. */
+  reset(): void {
+    this._save = defaultSave();
+    this.flush();
+  }
 }

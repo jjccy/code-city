@@ -45,6 +45,19 @@ export class PetManager {
     return pet;
   }
 
+  addPetDirect(speciesId: string, name: string): PetSave | undefined {
+    const species = PET_SPECIES.find(s => s.id === speciesId);
+    if (!species) { return; }
+    const pet: PetSave = {
+      id: randomId(), speciesId, name, stage: 0,
+      path: 'undecided', normalFedTotal: 0, premiumFedTotal: 0,
+      assignedTo: null, specialAbilityUnlocked: false,
+    };
+    this.saveManager.save.pets.push(pet);
+    this.saveManager.scheduleSave();
+    return pet;
+  }
+
   feedPet(petId: string, feedType: 'normal' | 'premium', amount: number): boolean {
     const resources = this.saveManager.save.resources;
     const key = feedType === 'normal' ? 'normalFeed' : 'premiumFeed';
@@ -69,12 +82,14 @@ export class PetManager {
 
     const species = PET_SPECIES.find(s => s.id === pet.speciesId)!;
 
-    // Determine / confirm evolution path
-    if (pet.path === 'undecided' && pet.stage === 0) {
+    // Determine evolution path on first threshold hit
+    if (pet.path === 'undecided') {
       if (pet.premiumFedTotal >= species.premiumFeedCost) {
         pet.path = 'manual';
       } else if (pet.normalFedTotal >= species.normalFeedCost) {
         pet.path = 'llm';
+      } else {
+        return; // neither threshold reached yet
       }
     }
 
@@ -82,9 +97,10 @@ export class PetManager {
     const normalNeeded  = species.normalFeedCost  * nextStage;
     const premiumNeeded = species.premiumFeedCost * nextStage;
 
-    const canEvolve =
-      pet.normalFedTotal  >= normalNeeded &&
-      pet.premiumFedTotal >= premiumNeeded;
+    // Only the path's dominant feed type drives evolution
+    const canEvolve = pet.path === 'manual'
+      ? pet.premiumFedTotal >= premiumNeeded
+      : pet.normalFedTotal  >= normalNeeded;
 
     if (!canEvolve) { return; }
 

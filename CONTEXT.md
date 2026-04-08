@@ -217,6 +217,76 @@ Publisher: jjccy
 
 ---
 
+## Building Upgrade Restrictions (added)
+
+`CityManager.upgradeBuilding` now enforces three gates:
+
+| Gate | Formula |
+|---|---|
+| Level cap | Max level 50 (`CityManager.MAX_BUILDING_LEVEL`) |
+| Feed cost floor | `Math.max(50, type.cost) × level × 2` — prevents free Farm upgrades |
+| XP gate | Must have `type.unlockXP × level` City XP |
+
+---
+
+## Evolution Fix (added)
+
+`PetManager.tryEvolve` was requiring **both** feed types to evolve, which was wrong.
+Now: once a path is locked in (LLM or manual), only that path's feed drives evolution.
+
+- LLM path → only `normalFedTotal` checked against threshold
+- Manual path → only `premiumFedTotal` checked against threshold
+- Undecided → returns early until one threshold is hit
+
+---
+
+## Dev Mode Features (added)
+
+When the extension runs in `ExtensionMode.Development` (F5 launch):
+
+### Hot reload
+`WebviewProvider` creates a `FileSystemWatcher` on `media/**`. Any change to `main.html`
+(or other media files) instantly reloads the webview — no manual "Reload Window" needed
+for UI changes.
+
+### Dev tab
+A 4th "🔧 Dev" tab appears in the webview sidebar (hidden in production). It provides:
+- **Resource editors** — set/add normalFeed, premiumFeed, cityXP, rareMaterials directly
+- **Force Tick** — trigger a city production tick immediately  
+- **Force Evolve** — advance any pet to the next stage instantly
+- **Reset Save** — wipe save back to defaults
+
+Dev messages are gated server-side (`if (!this.devMode) break`) so they're inert even
+if somehow sent in production.
+
+---
+
+## Testing (added)
+
+```
+test/
+  setup.js          # Registers ts-node + intercepts 'vscode' → mock
+  vscode.mock.ts    # Minimal vscode API stub
+  game.test.ts      # Unit tests for SaveManager, PetManager, CityManager, FeedTracker
+tsconfig.test.json  # Extends main tsconfig; rootDir="./" to include test/
+.mocharc.json       # Mocha config: require setup.js, spec test/**/*.test.ts
+```
+
+Run tests:
+```bash
+npm install   # first time: installs mocha, ts-node, @types/mocha
+npm test
+```
+
+Coverage areas:
+- `SaveManager` — default save, load/flush cycle, reset
+- `PetManager` — feed deduction, LLM path evolution, manual path evolution,
+  stage-2 single-path gate, max-stage guard
+- `CityManager` — tick production, offline cap, upgrade level cap, XP gate, cost floor
+- `FeedTracker` — daily bonus, streak increment/reset, LLM vs manual feed conversion
+
+---
+
 ## Known Gaps / Future Work
 
 - [ ] **Pet sprites** — currently emoji. Add pixel art PNG sprite sheets (32×32 / 48×48,
@@ -231,7 +301,6 @@ Publisher: jjccy
 - [ ] **Sound effects** — vscode webview can play Audio
 - [ ] **More species** — only 4 pets right now. Easy to add more in `game-data.ts`
 - [ ] **Publish to Marketplace** — need to run `vsce package` then `vsce publish`
-- [ ] **Test coverage** — no tests yet
 
 ---
 

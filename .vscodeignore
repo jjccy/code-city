@@ -1,5 +1,8 @@
 node_modules/**
 src/**
+test/**
 .gitignore
+.mocharc.json
 tsconfig.json
+tsconfig.test.json
 **/*.map
